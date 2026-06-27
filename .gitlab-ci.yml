@@ -1,0 +1,190 @@
+# =====================================================================
+#  GitLab CI/CD — AI-asistovaný vývoj (pravidla pro projekty)
+#  Self-hosted GitLab. Engine: XeLaTeX.
+#
+#  Model (dohodnutý):
+#   • Práce přes POVINNÝ merge request do main; slučování squash.
+#   • MR: jen BUILD + ověření kompilace. PDF jako artifact (náhled),
+#     do gitu se NEcommituje. Žádný push zpět do větve MR.
+#   • RELEASE: jen na git TAG (SemVer vX.Y.Z) na main.
+#     PDF + JSON se publikují do orphan větve `releases`
+#     (jako gh-pages) — sekvenčně verzované + kopie `-latest`.
+#   • Verze (tag + commit + datum) se RAZÍ do PDF (patička+titulka)
+#     a do vedlejšího ai-dev-rules.json přes generovaný version.tex.
+#
+#  Náklad: build běží na MR a na tag. Žádný build na každý push do main
+#  (viz pravidla `rules` níže). Pokud i to bude moc, lze MR build omezit
+#  jen na změny v tex/**.
+# =====================================================================
+
+stages:
+  - build
+  - release
+
+variables:
+  # Základ názvu výstupních souborů
+  DOC_BASENAME: "ai-dev-rules"
+  # Hlavní TeX soubor (v kořeni repa)
+  TEX_MAIN: "ai-rules"
+  # TeX Live image — rozumný default, plná distribuce.
+  # Pozn.: image je velký (~4 GB). Pokud bude tahání zdržovat, doporučení
+  # je postavit si menší vlastní image do GitLab Container Registry
+  # (texlive-full není nutný — stačí scheme s xelatex + fontspec + tcolorbox).
+  TEXLIVE_IMAGE: "registry.gitlab.com/islandoftex/images/texlive:latest"
+
+# --------------------------------------------------------------------
+#  Sdílený skript: vygeneruje version.tex (pro LaTeX) a JSON (vedlejší).
+#  Verze se bere z git tagu; mimo tag (MR) se použije značka "draft".
+# --------------------------------------------------------------------
+.version_helper: &version_helper
+  - |
+    # Verze: z tagu (vX.Y.Z) odřízneme "v"; mimo tag = draft-<sha>
+    if [ -n "$CI_COMMIT_TAG" ]; then
+      VERSION="${CI_COMMIT_TAG#v}"
+    else
+      VERSION="draft-${CI_COMMIT_SHORT_SHA}"
+    fi
+    COMMIT="${CI_COMMIT_SHORT_SHA}"
+    BUILD_DATE="$(date -u +%Y-%m-%d)"
+    echo "Verze: ${VERSION} | commit: ${COMMIT} | datum: ${BUILD_DATE}"
+    # version.tex pro LaTeX (přepíše \providecommand fallbacky v ai-rules.tex)
+    cat > "version.tex" <<EOF
+    \\def\\docversion{${VERSION}}
+    \\def\\doccommit{${COMMIT}}
+    \\def\\docdate{${BUILD_DATE}}
+    EOF
+    # vedlejší JSON s metadaty (publikuje se vedle PDF)
+    cat > "${DOC_BASENAME}.json" <<EOF
+    {
+      "document": "${DOC_BASENAME}",
+      "version": "${VERSION}",
+      "commit": "${COMMIT}",
+      "tag": "${CI_COMMIT_TAG:-}",
+      "build_date": "${BUILD_DATE}",
+      "pipeline": "${CI_PIPELINE_URL}"
+    }
+    EOF
+
+.build_pdf: &build_pdf
+  - |
+    # dvojí běh kvůli TOC a \pageref{LastPage}
+    # hlavní dokument
+    xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+    xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+    cp "${TEX_MAIN}.pdf" "${DOC_BASENAME}.pdf"
+    # doprovodný motivační dokument
+    xelatex -interaction=nonstopmode -halt-on-error "motivace.tex"
+    xelatex -interaction=nonstopmode -halt-on-error "motivace.tex"
+    cp "motivace.pdf" "${DOC_BASENAME}-motivace.pdf"
+
+# --------------------------------------------------------------------
+#  BUILD (na merge request): ověří kompilaci, PDF jako artifact.
+#  Žádný commit zpět, žádný push. Reviewer si PDF stáhne z artifactů.
+# --------------------------------------------------------------------
+build:mr:
+  stage: build
+  image: "${TEXLIVE_IMAGE}"
+  rules:
+    # běží jen v kontextu merge requestu
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - *version_helper
+    - *build_pdf
+  artifacts:
+    name: "${DOC_BASENAME}-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - "${DOC_BASENAME}.pdf"
+      - "${DOC_BASENAME}-motivace.pdf"
+      - "${DOC_BASENAME}.json"
+    expire_in: 30 days
+
+# --------------------------------------------------------------------
+#  RELEASE (na git tag vX.Y.Z): build + publikace do orphan větve
+#  `releases` (jako gh-pages). Větev drží JEN výstupy, žádný zdroj.
+#  Pokud neexistuje, založí se jako orphan.
+# --------------------------------------------------------------------
+release:publish:
+  stage: release
+  image: "${TEXLIVE_IMAGE}"
+  rules:
+    # jen na anotovaný/lehký tag ve formátu vX.Y.Z
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
+  variables:
+    # plný klon, ať můžeme pracovat s více větvemi
+    GIT_STRATEGY: clone
+    GIT_DEPTH: 0
+  script:
+    - *version_helper
+    - *build_pdf
+    - |
+      VERSION="${CI_COMMIT_TAG#v}"
+      COMMIT="${CI_COMMIT_SHORT_SHA}"
+
+      # --- git identita pro CI commit ---
+      git config user.email "ci@${CI_SERVER_HOST}"
+      git config user.name  "GitLab CI"
+
+      # --- push přes Project Access Token (viz README_CI) ---
+      # GIT_PUSH_TOKEN je maskovaná CI proměnná s právem write_repository.
+      AUTH_URL="https://oauth2:${GIT_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+
+      # --- vygenerované výstupy stranou (mimo working tree) ---
+      # Jinak by `git checkout releases` selhal na kolizi s verzovanými
+      # soubory téhož názvu, které už v releases jsou.
+      STAGE="$(mktemp -d)"
+      cp "${DOC_BASENAME}.pdf"  "${STAGE}/"
+      cp "${DOC_BASENAME}.json" "${STAGE}/"
+      cp "${DOC_BASENAME}-motivace.pdf" "${STAGE}/"
+
+      # --- získej/založ orphan větev `releases` ---
+      if git ls-remote --exit-code --heads origin releases >/dev/null 2>&1; then
+        git fetch origin releases
+        git checkout -f releases
+      else
+        echo "Větev releases neexistuje — zakládám jako orphan."
+        git checkout --orphan releases
+        git rm -rf . >/dev/null 2>&1 || true
+        cat > index.md <<EOF
+      # Releases — ${DOC_BASENAME}
+
+      Tato větev drží publikovaná PDF směrnice. Negeneruje se ručně —
+      plní ji CI při tagu vX.Y.Z. Zdroj je v hlavní větvi.
+      EOF
+      fi
+
+      # --- vrať výstupy na místo (přepíše předchozí verzi) ---
+      cp "${STAGE}/${DOC_BASENAME}.pdf"  "${DOC_BASENAME}.pdf"
+      cp "${STAGE}/${DOC_BASENAME}.json" "${DOC_BASENAME}.json"
+      cp "${STAGE}/${DOC_BASENAME}-motivace.pdf" "${DOC_BASENAME}-motivace.pdf"
+
+      # --- úklid starších verzovaných názvů, pokud někde zůstaly ---
+      git rm -f "${DOC_BASENAME}-v"*.pdf "${DOC_BASENAME}-latest"* >/dev/null 2>&1 || true
+
+      # --- doplň řádek do index.md (přehled vydání) ---
+      grep -q "v${VERSION}\b" index.md 2>/dev/null || \
+        echo "- v${VERSION} — $(date -u +%Y-%m-%d) — ${COMMIT}" >> index.md
+
+      # -f: ai-dev-rules.pdf/.json jsou v .gitignore (*.pdf) kvůli main větvi,
+      # ve releases je ale chceme — proto vynutíme přidání.
+      git add -f "${DOC_BASENAME}.pdf" "${DOC_BASENAME}.json" "${DOC_BASENAME}-motivace.pdf"
+      git add index.md
+      # [skip ci] zabrání smyčce (commit do releases nesmí spustit pipeline)
+      git commit -m "release: ${DOC_BASENAME} v${VERSION} [skip ci]"
+      git push "${AUTH_URL}" HEAD:releases
+
+      echo "Publikováno do větve releases: ${DOC_BASENAME}.pdf (v${VERSION})."
+
+      # --- volitelně: nahrání na externí share ---
+      # Necháno jako placeholder — doplň podle zvoleného úložiště.
+      # Příklady:
+      #   SMB:  smbclient //server/share -A creds -c "put ${DOC_BASENAME}.pdf"
+      #   SCP:  scp ${DOC_BASENAME}.pdf user@host:/cesta/
+      #   S3:   aws s3 cp ${DOC_BASENAME}.pdf s3://bucket/dokumenty/
+      # echo "TODO: publikace na share"
+  artifacts:
+    name: "${DOC_BASENAME}-v${CI_COMMIT_TAG}"
+    paths:
+      - "${DOC_BASENAME}.pdf"
+      - "${DOC_BASENAME}-motivace.pdf"
+      - "${DOC_BASENAME}.json"
+    expire_in: never

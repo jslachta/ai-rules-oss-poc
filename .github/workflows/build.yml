@@ -1,0 +1,239 @@
+# =====================================================================
+#  GitHub Actions — AI-asistovaný vývoj (pravidla pro projekty)
+#  Engine: XeLaTeX.  Ekvivalent původní .gitlab-ci.yml.
+#
+#  Model (shodný s GitLab variantou):
+#   • PR do main: jen BUILD + ověření kompilace. PDF jako artifact
+#     (náhled pro recenzenta), do gitu se NEcommituje, nic se nepushuje.
+#   • RELEASE: jen na git TAG (SemVer vX.Y.Z). Publikuje DVĚMA cestami:
+#       1) push do orphan větve `releases` (princip z GitLabu zachován —
+#          nezávislost na funkci platformy, použitelné i jako GitHub Pages,
+#          prevence ztráty funkce dodavatelského řetězce).
+#       2) GitHub Release + assety (využití toho, co GitHub navíc nabízí).
+#   • Verze (tag + commit + datum) se RAZÍ do PDF (patička+titulka)
+#     a do vedlejšího ai-dev-rules.json přes generovaný version.tex.
+#
+#  Náklad: build běží na PR a na tag. Žádný build na každý push do main.
+#
+#  Princip (záměrná redundance): orphan větev `releases` drží stabilní
+#  permalink nezávislý na Release API. Kdyby GitHub Release zmizel nebo
+#  migrovalo se jinam, raw odkaz do větve / Pages funguje dál. GitHub
+#  Release je nadstavba, ne náhrada.
+#
+#  Rozdíl proti GitLabu:
+#   • GIT_PUSH_TOKEN není potřeba — push do `releases` i vytvoření
+#     Release zvládne automatický GITHUB_TOKEN (permissions: contents:
+#     write níže). Žádný ruční PAT.
+# =====================================================================
+
+name: build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+# Výchozí: jen čtení. Release job si vyžádá zápis lokálně (viz níže).
+permissions:
+  contents: read
+
+env:
+  # Základ názvu výstupních souborů
+  DOC_BASENAME: ai-dev-rules
+  # Hlavní TeX soubor (v kořeni repa)
+  TEX_MAIN: ai-rules
+  # TeX Live image — shodný se zdrojem v GitLab variantě.
+  TEXLIVE_IMAGE: ghcr.io/xu-cheng/texlive-full:latest
+
+jobs:
+  # ------------------------------------------------------------------
+  #  BUILD (na pull request): ověří kompilaci, PDF jako artifact.
+  #  Žádný commit zpět, žádná publikace. Recenzent si PDF stáhne
+  #  z artifactů běhu.
+  # ------------------------------------------------------------------
+  build:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xu-cheng/texlive-full:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate version.tex + JSON (draft)
+        run: |
+          # Mimo tag (PR) = draft-<short-sha>
+          VERSION="draft-${GITHUB_SHA::7}"
+          COMMIT="${GITHUB_SHA::7}"
+          BUILD_DATE="$(date -u +%Y-%m-%d)"
+          echo "Verze: ${VERSION} | commit: ${COMMIT} | datum: ${BUILD_DATE}"
+          cat > version.tex <<EOF
+          \\def\\docversion{${VERSION}}
+          \\def\\doccommit{${COMMIT}}
+          \\def\\docdate{${BUILD_DATE}}
+          EOF
+          cat > "${DOC_BASENAME}.json" <<EOF
+          {
+            "document": "${DOC_BASENAME}",
+            "version": "${VERSION}",
+            "commit": "${COMMIT}",
+            "tag": "",
+            "build_date": "${BUILD_DATE}",
+            "pipeline": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
+
+      - name: Build PDFs
+        run: |
+          # dvojí běh kvůli TOC a \pageref{LastPage}
+          xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+          xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+          cp "${TEX_MAIN}.pdf" "${DOC_BASENAME}.pdf"
+          xelatex -interaction=nonstopmode -halt-on-error motivace.tex
+          xelatex -interaction=nonstopmode -halt-on-error motivace.tex
+          cp motivace.pdf "${DOC_BASENAME}-motivace.pdf"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.DOC_BASENAME }}-${{ github.sha }}
+          path: |
+            ${{ env.DOC_BASENAME }}.pdf
+            ${{ env.DOC_BASENAME }}-motivace.pdf
+            ${{ env.DOC_BASENAME }}.json
+          retention-days: 30
+
+  # ------------------------------------------------------------------
+  #  RELEASE (na git tag vX.Y.Z): build + publikace jako GitHub Release.
+  #  PDF + JSON jdou jako assety release. Žádná orphan větev,
+  #  žádný PAT — stačí automatický GITHUB_TOKEN.
+  # ------------------------------------------------------------------
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xu-cheng/texlive-full:latest
+    permissions:
+      contents: write  # nutné pro vytvoření Release + nahrání assetů
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate version.tex + JSON (release)
+        run: |
+          # Z tagu vX.Y.Z odřízneme "v"
+          VERSION="${GITHUB_REF_NAME#v}"
+          COMMIT="${GITHUB_SHA::7}"
+          BUILD_DATE="$(date -u +%Y-%m-%d)"
+          echo "Verze: ${VERSION} | commit: ${COMMIT} | datum: ${BUILD_DATE}"
+          cat > version.tex <<EOF
+          \\def\\docversion{${VERSION}}
+          \\def\\doccommit{${COMMIT}}
+          \\def\\docdate{${BUILD_DATE}}
+          EOF
+          cat > "${DOC_BASENAME}.json" <<EOF
+          {
+            "document": "${DOC_BASENAME}",
+            "version": "${VERSION}",
+            "commit": "${COMMIT}",
+            "tag": "${GITHUB_REF_NAME}",
+            "build_date": "${BUILD_DATE}",
+            "pipeline": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
+
+      - name: Build PDFs
+        run: |
+          xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+          xelatex -interaction=nonstopmode -halt-on-error "${TEX_MAIN}.tex"
+          cp "${TEX_MAIN}.pdf" "${DOC_BASENAME}.pdf"
+          xelatex -interaction=nonstopmode -halt-on-error motivace.tex
+          xelatex -interaction=nonstopmode -halt-on-error motivace.tex
+          cp motivace.pdf "${DOC_BASENAME}-motivace.pdf"
+
+      # ----------------------------------------------------------------
+      #  Publikace 1/2 — orphan větev `releases` (princip z GitLabu).
+      #  Stabilní permalink nezávislý na Release API; použitelné i jako
+      #  zdroj pro GitHub Pages. GITHUB_TOKEN má díky permissions:
+      #  contents: write právo pushnout, žádný PAT není třeba.
+      # ----------------------------------------------------------------
+      - name: Publish to orphan branch `releases`
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          COMMIT="${GITHUB_SHA::7}"
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+
+          # checkout@v4 stahuje jen aktuální ref (tag). Větev `releases`
+          # není ve working tree → musíme ji fetchnout zvlášť, pokud existuje.
+          AUTH_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # Vygenerované výstupy stranou (mimo working tree), ať checkout
+          # `releases` neselže na kolizi se stejnojmennými soubory.
+          STAGE="$(mktemp -d)"
+          cp "${DOC_BASENAME}.pdf"          "${STAGE}/"
+          cp "${DOC_BASENAME}.json"         "${STAGE}/"
+          cp "${DOC_BASENAME}-motivace.pdf" "${STAGE}/"
+
+          if git ls-remote --exit-code --heads "${AUTH_URL}" releases >/dev/null 2>&1; then
+            git fetch "${AUTH_URL}" releases
+            git checkout -f -B releases FETCH_HEAD
+          else
+            echo "Větev releases neexistuje — zakládám jako orphan."
+            git checkout --orphan releases
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          # Vrať výstupy na místo (přepíše předchozí verzi → stabilní názvy).
+          cp "${STAGE}/${DOC_BASENAME}.pdf"          "${DOC_BASENAME}.pdf"
+          cp "${STAGE}/${DOC_BASENAME}.json"         "${DOC_BASENAME}.json"
+          cp "${STAGE}/${DOC_BASENAME}-motivace.pdf" "${DOC_BASENAME}-motivace.pdf"
+
+          # Úklid starších verzovaných názvů, kdyby někde zůstaly.
+          git rm -f "${DOC_BASENAME}-v"*.pdf "${DOC_BASENAME}-latest"* >/dev/null 2>&1 || true
+
+          # Přehled vydání (index.md) + jednoduchá landing pro GitHub Pages.
+          grep -q "v${VERSION}\b" index.md 2>/dev/null || \
+            echo "- v${VERSION} — $(date -u +%Y-%m-%d) — ${COMMIT}" >> index.md
+          if [ ! -f index.html ]; then
+            cat > index.html <<EOF
+          <!doctype html><meta charset="utf-8">
+          <title>${DOC_BASENAME} — releases</title>
+          <h1>${DOC_BASENAME}</h1>
+          <p>Poslední vydání (stabilní odkazy):</p>
+          <ul>
+            <li><a href="${DOC_BASENAME}.pdf">${DOC_BASENAME}.pdf</a> — plná pravidla</li>
+            <li><a href="${DOC_BASENAME}-motivace.pdf">${DOC_BASENAME}-motivace.pdf</a> — motivace</li>
+            <li><a href="${DOC_BASENAME}.json">${DOC_BASENAME}.json</a> — metadata</li>
+          </ul>
+          <p>Přehled verzí viz <a href="index.md">index.md</a>.</p>
+          EOF
+          fi
+          # .nojekyll: ať Pages servíruje soubory tak, jak jsou.
+          touch .nojekyll
+
+          # -f: PDF/JSON jsou v .gitignore (*.pdf) kvůli main, tady je chceme.
+          git add -f "${DOC_BASENAME}.pdf" "${DOC_BASENAME}.json" "${DOC_BASENAME}-motivace.pdf"
+          git add index.md index.html .nojekyll
+          git commit -m "release: ${DOC_BASENAME} v${VERSION}"
+          git push "${AUTH_URL}" HEAD:releases
+          echo "Publikováno do větve releases: ${DOC_BASENAME}.pdf (v${VERSION})."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------------------
+      #  Publikace 2/2 — GitHub Release + assety (nadstavba GitHubu).
+      # ----------------------------------------------------------------
+      - name: Create GitHub Release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          fail_on_unmatched_files: true
+          files: |
+            ${{ env.DOC_BASENAME }}.pdf
+            ${{ env.DOC_BASENAME }}-motivace.pdf
+            ${{ env.DOC_BASENAME }}.json

@@ -1,0 +1,597 @@
+% =====================================================================
+%  AI-asistovaný vývoj — Pravidla pro dlouhodobé a nové projekty
+%  Engine: XeLaTeX  |  Build: make  (viz Makefile)
+%  Struktura: SLOUCENY DRAFT - vse v jednom main.tex (snazsi rucni revize)
+%             Po zamrznuti draftu lze opet rozdelit na sekce/*.tex.
+%  Konvence pro diff: one-sentence-per-line v obsahových souborech.
+% =====================================================================
+\input{preamble.tex}
+
+
+\begin{document}
+
+% ===================== TITULNÍ STRANA =====================
+\thispagestyle{empty}
+\vspace*{3cm}
+{\sffamily\fontsize{30}{34}\selectfont\bfseries\color{navy}AI-asistovaný vývoj\par}
+\vspace{4pt}
+{\sffamily\Large\bfseries\color{blue}Pravidla pro dlouhodobé a nové projekty\par}
+\vspace{10pt}
+{\color{blue}\rule{\linewidth}{1.5pt}}\par
+\vspace{12pt}
+{\sffamily\large\itshape\color{black!55}Adaptovatelná šablona --- závazná směrnice a best practices\par}
+\vspace{20pt}
+{\sffamily\small\color{black!50}
+Rámec pro řízení rizik AI-asistovaného vývoje k převzetí a úpravě\par
+\vspace{2pt}
+Verze \versionline\par}
+\vfill
+\newpage
+
+% ===================== OBSAH =====================
+\tableofcontents
+\newpage
+
+% ===================== SEKCE =====================
+% =====================================================================
+% SEKCE: 00-jak-cist.tex
+% =====================================================================
+\section{Jak tento dokument číst}
+
+\begin{callout}[amber]{Toto je šablona, ne hotová politika}
+Dokument je rámec k~převzetí a úpravě, ne směrnice konkrétní organizace.
+Místa jako \enquote{vedení projektu rozhodne} nebo eskalační autorita jsou záměrně obecná --- doplňte je podle své struktury roli.
+Vezměte si, co sedí; zbytek upravte nebo vypusťte.
+Šíří se pod licencí CC-BY 4.0 (volné použití včetně komerčního, s~uvedením autora).
+\end{callout}
+
+\medskip
+\textbf{Dokument má dvě jasně oddělené části.}
+Nezaměňuj je --- liší se mírou závaznosti.
+
+\begin{callout}[light]{ČÁST A --- Směrnice (závazná)}
+Pravidla, která MUSÍ být dodržena.
+Porušení je důvod k zamítnutí MR a v~rizikových oblastech může znamenat regulatorní expozici (NIS2/GDPR).
+\textbf{Formulace:} \enquote{musí}, \enquote{nesmí}, \enquote{je zakázáno}.
+\end{callout}
+
+\begin{callout}[green]{ČÁST B --- Best practices (doporučení)}
+Postupy, které zvyšují kvalitu a snižují riziko, ale podléhají inženýrskému úsudku.
+Odchylka je přípustná, je-li vědomá a obhajitelná.
+\textbf{Formulace:} \enquote{doporučujeme}, \enquote{vhodné}, \enquote{zvaž}.
+\end{callout}
+
+\medskip
+\textbf{Dvě domény projektů:} pravidla se liší podle toho, zda jde o~\textbf{dlouhodobý/zavedený projekt} (anglicky \emph{legacy} --- existuje, běží, má historii), nebo \textbf{nový projekt} (zelená louka, hranice se teprve staví).
+
+\begin{callout}[amber]{Hraniční případ}
+Aktivně rozvíjený zavedený projekt = ZAVEDENÝ.
+Rozhoduje existence kódové báze a jejího dosahu škody (anglicky \emph{blast radius}), ne intenzita aktuálního vývoje.
+Nový modul uvnitř zavedeného systému se řídí pravidly pro zavedené projekty, dokud není izolovaný za stabilním kontraktem (rozhraním).
+\end{callout}
+
+% =====================================================================
+% SEKCE: 01-vychodisko.tex
+% =====================================================================
+\section{Východisko: proč se pravidla liší podle stáří projektu}
+
+Rozdíl není svévolný.
+Vychází ze dvou faktorů, které se mezi zavedeným a novým projektem zásadně liší:
+
+\begin{itemize}
+\item \textbf{Mentální model.}
+U~zavedeného projektu existuje zdokumentovaná i nezdokumentovaná znalost, kterou AI nezná a neumí rekonstruovat ze samotného kódu.
+U~nového projektu se model teprve tvoří --- a AI ho může nenápadně nahradit dřív, než vznikne.
+\item \textbf{Dosah škody (blast radius).}
+Označuje rozsah škody, kterou způsobí chyba v~dané části kódu.
+U~zavedeného projektu je už zafixovaný a často velký (integrace, data, závislosti).
+U~nového projektu ho lze ještě navrhnout tak, aby rizikové části byly malé a izolované.
+\end{itemize}
+
+Velikost škody ale není celý obraz rizika.
+Stejně podstatné je, jak rychle chybu \emph{poznáme} a jak snadno ji \emph{vrátíme}.
+Riziko dané části kódu proto měříme na třech osách:
+
+\begin{itemize}
+\item \textbf{Dosah škody --- jak velká škoda.}
+Kolik toho selže, když se to pokazí (od lokálního bugu po systémový bezpečnostní incident).
+\item \textbf{Ověřitelnost --- jak snadno poznáme, že je to špatně (nebo správně).}
+Chyba v~doménové logice spadne v~testu hned; chyba v~šifrování se neprojeví v~testu, ale jako únik za měsíce.
+Špatná ověřitelnost = chyba dlouho tiše čeká.
+\item \textbf{Reverzibilita --- jak snadno to vrátíme, když se spleteme.}
+Feature flag nebo vratná migrace sníží riziko i u~velkého dosahu; smazaná data bez zálohy jsou nevratná i při malém dosahu.
+\end{itemize}
+
+\begin{calloutplain}[amber]
+Osy se kombinují --- nejhorší je velký dosah \emph{a} špatná ověřitelnost \emph{a} nevratnost (chyba je velká, dlouho ji nevidíme a nejde vzít zpět).
+Naopak velký dosah, který je dobře ověřitelný a snadno vratný (feature flag, rychlý rollback), je zvládnutelný.
+Proto míru přímé kontroly vývojáře (A1.3) neřídí jen velikost škody, ale všechny tři osy dohromady.
+\end{calloutplain}
+
+\begin{calloutplain}[grey]
+Důsledek: u~zavedeného projektu chrání pravidla EXISTUJÍCÍ porozumění před erozí.
+U~nových projektů zajišťují, aby porozumění vůbec VZNIKLO a aby se rizikové hranice postavily správně od začátku.
+\end{calloutplain}
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.20\linewidth} L{0.38\linewidth} L{0.38\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Faktor}} & {\color{white}\textbf{Dlouhodobý / zavedený}} & {\color{white}\textbf{Nový projekt}} \\
+\midrule
+Mentální model & Existuje, je cenný, AI ho nezná & Teprve vzniká, AI ho může vytlačit \\
+Dosah škody & \br{red}{Zafixovaný, často velký} & \br{green}{Lze navrhnout malý a izolovaný} \\
+Hlavní riziko AI & \br{red}{Tichá regrese, narušení zaručených předpokladů} & \br{amber}{Vývojář bez modelu vlastního kódu} \\
+Role pravidel & Chránit porozumění před erozí & Zajistit, že porozumění vznikne \\
+Šíře zóny vedené AI & Užší --- jen izolovatelné úkoly & Širší --- když skeleton a ADR vznikly dřív \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{callout}[green]{Dosah škody je návrhová proměnná, ne osud}
+Z~tabulky plyne pozitivní důsledek: dosah škody není pevně daný --- je do velké míry \emph{výsledkem architektury}.
+Při dobře vrstveném návrhu, kde je bezpečnostní a datová vrstva izolovaná za stabilními kontrakty, se rizikové jádro smrští na malou, dobře hlídanou plochu.
+Většina kódu pak leží v~zóně nízkého dosahu škody, kde může AI pracovat téměř bez omezení.
+Architektura tedy není jen ochrana před AI, ale i \emph{nástroj, jak AI bezpečně pustit dál} --- rozvedeno v~B5.
+\end{callout}
+
+% =====================================================================
+% SEKCE: 02-cast-a.tex
+% =====================================================================
+\begin{partbanner}[navy]
+\mbox{ČÁST A} --- Směrnice (závazná)
+\end{partbanner}
+
+\subsection{A1. Pravidla platná pro všechny projekty}
+
+Platí bez ohledu na stáří projektu a mají přednost před vším níže.
+
+\begin{enumerate}[label=\textbf{A1.\arabic*}]
+\item \textbf{Pravidlo porozumění.}
+Kód, kterému vývojář nerozumí a nedokáže ho obhájit bez AI, NESMÍ být mergován (začleněn) --- bez ohledu na to, že \enquote{funguje}.
+\item \textbf{Převzetí jako vlastního.}
+Otázkou není, zda kód napsala AI, ale zda ho vývojář plně převzal jako vlastní.
+To znamená: rozumět mu, umět vysvětlit jeho trade-offy (kompromisy), doložit jej testy --- a v~rizikových oblastech i threat modelem (modelem hrozeb) --- a nechat jej projít odpovídajícím review.
+Co tyto podmínky splní, smí být použito i v~rizikových oblastech; co je nesplní, nesmí být použito nikde.
+Výjimkou je správa tajemství (A1.4), kde platí tvrdý zákaz bez ohledu na převzetí.
+\item \textbf{Riziko řídí kontrolu.}
+Čím větší riziko --- velikost škody, horší ověřitelnost a horší reverzibilita (viz Východisko) --- tím vyšší povinná míra přímé kontroly vývojáře.
+Klasifikace dle matice v~A4.
+\item \textbf{Tajemství a klíče (secrets).}
+AI NESMÍ generovat správu přístupových údajů, klíčů a tokenů (secrets management).
+Žádné přihlašovací údaje, klíče ani tokeny v~kódu či repozitáři --- nikdy, v~žádném projektu.
+Zde nejde o~porozumění, ale o~to, že práce s~reálnými tajemstvími přes AI je sama o~sobě jejich únikem; proto výjimka z~principu A1.2.
+\item \textbf{Označení původu.}
+Kód generovaný AI musí být označen v~commitu nebo MR (např. \code{[ai-generated]}) kvůli auditovatelnosti.
+\item \textbf{Bezpečnostní vrstva --- nejvyšší laťka převzetí.}
+U~autentizace, autorizace, šifrování, perzistence, tokenů OAuth a auditního logování platí princip A1.2 v~nejpřísnější podobě: ať kód navrhne kdokoli, vývojář jej musí plně převzít --- doložit threat modelem, testy a obhájit každé rozhodnutí bez AI.
+Bez tohoto převzetí kód do těchto oblastí nesmí, byť \enquote{funguje}.
+\item \textbf{Smlouva o~zpracování dat (DPA) před odesláním dat.}
+Žádná osobní data se neposílají na externí AI rozhraní bez platné smlouvy o~zpracování (Data Processing Agreement, DPA) --- a u~služeb mimo EU bez standardních smluvních doložek (Standard Contractual Clauses, SCC).
+Přenos bez právního základu je porušení GDPR čl. 28/32.
+\item \textbf{Data pod NDA a nedůvěryhodné AI nástroje.}
+AI nástroj, který odesílá kód nebo data ke zpracování třetí straně, je z~pohledu mlčenlivosti (NDA) a GDPR \emph{přenosem dat třetí straně} --- bez ohledu na to, že nástroj nabízí volbu \enquote{neukládat} či \enquote{neučit se z~dat}.
+Deklarace poskytovatele není ověřitelná záruka.
+Proto: u~dat krytých NDA musí vedení projektu \emph{explicitně rozhodnout o~režimu práce s~AI} (viz B4) PŘED použitím nástroje.
+Defaultní režim při absenci rozhodnutí je nejpřísnější (zákaz odeslání).
+\end{enumerate}
+
+\subsection{A2. Směrnice pro dlouhodobé / zavedené projekty}
+
+Týká se systémů, které jsou v~produkci, mají historii a zafixovaný dosah škody.
+
+\begin{enumerate}[label=\textbf{A2.\arabic*}]
+\item \textbf{Žádný nepřevzatý zápis do zavedené báze.}
+AI nesmí zapisovat do zavedené báze autonomně --- její výstup vstupuje jako návrh, který vývojář převezme dle A1.2 (rozumí, doloží, obhájí), ne jako přímý commit.
+Tam, kde to vyžaduje citlivost projektu, se výsledky předávají výhradně jako textové instrukce pro vývojové prostředí, nikoli jako hotové soubory.
+\item \textbf{Žádná plošná AI-refaktorizace.}
+Přejmenování integračních vlastností (properties), změny kontraktů a hromadné refaktory se nedělají AI nástrojem nad celou bází.
+Tento vzor opakovaně vede k~vysokým nákladům na nápravu (řádově člověkodny).
+\item \textbf{Změna kontraktu = ADR.}
+Jakákoli změna veřejného kontraktu (API, integrační rozhraní, schéma) vyžaduje záznam architektonického rozhodnutí (Architecture Decision Record, ADR) PŘED implementací, bez ohledu na to, kdo nebo co kód napsal.
+\item \textbf{Reviewer ověřuje zaručené předpoklady.}
+U~zavedeného projektu reviewer požaduje vysvětlení, proč změna neporuší předpoklady, na které se spoléhá zbytek systému (a navazující integrace) --- ne jen že prošly testy.
+\item \textbf{AI asistuje, vývojář přebírá.}
+Default u~zavedené báze je, že AI radí a vývojář výstup přebírá dle A1.2.
+Režim vedený AI (širší volnost) je výjimka povolená jen pro izolovatelné, snadno ověřitelné úkoly (viz A4).
+\end{enumerate}
+
+\subsection{A3. Směrnice pro nové projekty}
+
+Zelená louka je příležitost postavit hranice správně.
+Pravidla míří na to, aby AI urychlila start, ale nenahradila tvorbu mentálního modelu a architektury.
+
+\begin{enumerate}[label=\textbf{A3.\arabic*}]
+\item \textbf{Skeleton a hranice jako první.}
+Architektonický skeleton (kostru) a hranice dosahu škody (kde leží bezpečnost, data, integrace) definuje vývojář PŘED tím, než AI začne generovat výplň.
+\item \textbf{ADR od commitu č. 1.}
+Klíčová rozhodnutí (perzistence, autentizace, šifrování, hranice modulů) mají ADR od začátku.
+Nový projekt nemá výmluvu \enquote{historicky to tak je}.
+\item \textbf{Izolace rizikových částí.}
+Bezpečnostní a datová vrstva se navrhuje jako malá, izolovaná a testovatelná, aby zóna vedená AI mohla být bezpečně širší.
+\item \textbf{Faktor přežití týmu (bus factor) od začátku.}
+I~u~nového projektu musí existovat alespoň jedna další osoba schopná kód převzít.
+AI se do tohoto faktoru nezapočítává.
+\item \textbf{Širší zóna vedená AI jen po splnění výše uvedeného.}
+Teprve když skeleton, ADR a izolace existují, smí AI vést vývoj doménové a UI vrstvy v~širším rozsahu než u~zavedeného projektu.
+\end{enumerate}
+
+\subsection{A4. Matice odpovědnosti podle dosahu škody a typu projektu}
+
+Sloučená matice: kde AI vede, kde vývojář a kdo je povinný reviewer.
+Liší se podle domény projektu.
+\enquote{Vede AI} = AI generuje, vývojář ověřuje; \enquote{vede vývojář} = AI smí asistovat, ale vývojář musí výstup plně převzít dle A1.2 (rozumí, doloží threat modelem a testy, obhájí bez AI).
+Jediná výjimka je správa tajemství --- tam AI nesmí generovat vůbec (A1.4).
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.18\linewidth} L{0.10\linewidth} L{0.07\linewidth} L{0.17\linewidth} L{0.17\linewidth} L{0.17\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Oblast}} & {\color{white}\textbf{Dosah}} & {\color{white}\textbf{Ov\,/\,Rev}} & {\color{white}\textbf{Zavedený}} & {\color{white}\textbf{Nový projekt}} & {\color{white}\textbf{Reviewer}} \\
+\midrule
+Doménová / business logika & \br{green}{Nízký} & \br{green}{+\,/\,+} & AI navrhuje, vývojář ověří & \br{green}{Vede AI} & Vývojář \\
+UI komponenty, formuláře & \br{green}{Nízký} & \br{green}{+\,/\,+} & AI navrhuje & \br{green}{Vede AI} & Vývojář \\
+Testy, dokumentace & \br{green}{Nízký} & \br{green}{+\,/\,+} & Vede AI & \br{green}{Vede AI} & Vývojář \\
+API endpointy, validace vstupu & \br{amber}{Střední} & \br{amber}{+\,/\,$\sim$} & Smíšený, kontrakt ručně & \br{amber}{Smíšený} & Senior vývojář \\
+Integrační kontrakty / vlastnosti & \br{amber}{Stř.--vys.} & \br{red}{$\sim$\,/\,$-$} & \br{red}{Vede vývojář + ADR} & \br{amber}{Vede vývojář + ADR} & Senior vývojář \\
+Autentizace, autorizace & \br{red}{Vysoký} & \br{red}{$-$\,/\,$\sim$} & \br{red}{Vede vývojář} & \br{red}{Vede vývojář} & Senior + Security \\
+Šifrování, klíče & \br{red}{Kritický} & \br{red}{$-$\,/\,$-$} & \br{red}{Vede vývojář} & \br{red}{Vede vývojář} & Senior + Security \\
+Perzistence, migrace DB & \br{red}{Vysoký} & \br{red}{$\sim$\,/\,$-$} & \br{red}{Vede vývojář} & \br{red}{Vede vývojář} & Senior vývojář \\
+Správa tajemství (secrets) & \br{red}{Kritický} & \br{red}{$-$\,/\,$-$} & \br{red}{AI nesmí generovat} & \br{red}{AI nesmí generovat} & Senior + Ops \\
+CI/CD, infrastruktura jako kód & \br{red}{Vysoký} & \br{amber}{$\sim$\,/\,+} & \br{amber}{AI jen rutinní kostra} & \br{amber}{AI jen rutinní kostra} & Senior + Ops \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{calloutplain}[grey]
+\textbf{Ov\,/\,Rev} = ověřitelnost\,/\,reverzibilita: \mbox{\texttt{+}} dobrá, \mbox{\texttt{$\sim$}} částečná, \mbox{\texttt{$-$}} špatná.
+Příklad čtení: šifrování má \mbox{\texttt{$-$\,/\,$-$}} --- chybu těžko poznáme i vrátíme, proto vede vývojář bez ohledu na vše ostatní.
+CI/IaC má velký dosah, ale \mbox{\texttt{$\sim$\,/\,+}} (vratné přes rollback), proto smí AI aspoň rutinní kostru.\\[4pt]
+\textbf{Čtení matice:} rozdíl zavedený vs nový je nejvýraznější u~doménové a UI vrstvy: u~nového projektu smí AI vést, u~zavedeného jen navrhovat.
+Bezpečnostní a datová vrstva vede vývojář v~obou případech --- riziko nezávisí na stáří projektu.
+\end{calloutplain}
+
+\subsection{A5. Vynucení a revize hranic}
+
+Pravidla, která nelze vynutit, líný proces obejde.
+Vynucení stojí na dvou vrstvách: procesní (povinná, funguje i bez silné infrastruktury) a technické (doporučené posílení, zavádí se podle dostupných prostředků).
+Pravidla jsou \emph{neosobní a symetrická} --- platí stejně pro juniora, seniora i architekta. Gate nekontroluje lidi, kontroluje artefakty na hranici.
+
+\begin{enumerate}[label=\textbf{A5.\arabic*}]
+\item \textbf{Procesní vrstva (povinná).}
+Veškerá změna codebase jde přes povinný merge request (MR); přímý push do hlavní větve je zakázán.
+Reviewer MUSÍ odmítnout MR, který nesplňuje Část A --- zejména bez vysvětlení designového rozhodnutí, bez ADR u~změny kontraktu, nebo s~kódem, kterému autor nerozumí.
+\enquote{Funguje to} není dostatečné zdůvodnění pro merge.
+\item \textbf{Soupis rizikových cest.}
+Cesty (adresáře, moduly) spadající do zóny vedené vývojářem (bezpečnost, data, tajemství, perzistence, CI/IaC) jsou explicitně vyjmenované v~repozitáři.
+Změna v~těchto cestách vyžaduje příslušného reviewera dle matice A4 --- bez ohledu na velikost změny.
+\item \textbf{Technická vrstva (doporučená, dle prostředků).}
+Tam, kde to infrastruktura dovolí, se procesní pravidla posílí automaticky:
+soubor \code{CODEOWNERS} váže rizikové cesty na povinné reviewery;
+CI gate (kontrolní úloha) ověří přítomnost ADR u~změny kontraktu a označení původu (\code{[ai-generated]}).
+Absence této vrstvy NERUŠÍ procesní povinnosti --- jen je nenahrazuje automatikou.
+\item \textbf{Periodická revize hranic.}
+Nejen jednotlivé MR, ale i samotné hranice se revidují (doporučeně čtvrtletně):
+Sedí ještě čára mezi \enquote{vede AI} a \enquote{vede vývojář}?
+Neprosáklo rizikové jádro do běžného kódu (sdílený stav, rozptýlená bezpečnost)?
+Nenarostl dosah škody v~částech, které byly dříve nízkorizikové?
+Revizi provádí role s~přehledem nad architekturou a bezpečností, nezávisle na autorech změn.
+\item \textbf{Zákaz obcházení.}
+Vědomé obejití gate (např. rozdělení rizikové změny na drobné MR, vypnutí kontroly, falešné označení původu) je porušení směrnice samo o~sobě --- nezávisle na tom, zda výsledný kód \enquote{funguje}.
+\end{enumerate}
+
+\subsection{A6. Eskalace při porušení}
+
+Eskalace je odstupňovaná a míří na \emph{nápravu a strukturu}, ne na potrestání osoby.
+Cílem je vrátit artefakt do souladu s~pravidly, ne hledat viníka.
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.05\linewidth} L{0.22\linewidth} L{0.36\linewidth} L{0.25\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{St.}} & {\color{white}\textbf{Situace}} & {\color{white}\textbf{Reakce}} & {\color{white}\textbf{Kdo}} \\
+\midrule
+1 & \br{green}{Neúmyslné porušení} & Varování v~MR + požadavek na nápravu (vysvětlení, ADR, přepsání). MR se nesloučí, dokud není v~souladu. & Reviewer \\
+2 & \br{amber}{Opakované / nenapravené} & Blok MR i větve; změna se nesloučí. Zaznamená se důvod. & Reviewer + senior \\
+3 & \br{red}{Úmyslné obcházení gate} & Eskalace na autoritu; přezkum dotčených změn zpětně. & {[}eskalační autorita --- doplnit{]} \\
+4 & \br{red}{Únik dat / know-how ven} & Okamžité zastavení; řeší se jako bezpečnostní incident (viz B6, NIS2/GDPR). & {[}eskalační autorita{]} + Security \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{itemize}
+\item \textbf{Default je náprava, ne trest.}
+Stupně 1--2 jsou běžná součást review; nejsou postihem, ale standardním tlakem na kvalitu.
+\item \textbf{Tvrdší reakce jen u~úmyslu a úniku.}
+Stupně 3--4 se týkají vědomého obcházení a odchozího toku dat --- tam, kde je v~sázce know-how nebo regulatorní soulad.
+\item \textbf{Eskalační autorita.}
+V~tomto draftu označena obecně jako \code{[eskalační autorita]}; konkrétní role/osoba se doplní při schválení dokumentu.
+\end{itemize}
+
+% =====================================================================
+% SEKCE: 03-cast-b.tex
+% =====================================================================
+\begin{partbanner}[blue]
+\mbox{ČÁST B} --- Best practices (doporučení)
+\end{partbanner}
+
+Doporučení podléhají úsudku.
+Odchylka je v~pořádku, pokud je vědomá a obhajitelná.
+
+\subsection{B1. Pro dlouhodobé / zavedené projekty}
+
+\begin{itemize}
+\item \textbf{AI jako oponent (sparring partner).}
+Nejvyšší přínos AI u~zavedeného projektu je v~analýze: vysvětlení cizího kódu, hledání dopadů změny, generování hypotéz při ladění --- ne v~psaní produkčního kódu.
+\item \textbf{Charakterizační testy před zásahem.}
+Před úpravou nepokrytého místa nech AI navrhnout testy popisující současné chování.
+Sníží riziko tiché regrese.
+\item \textbf{Inkrementální dávky.}
+Drobné, oddělené změny s~vlastním MR.
+Velký kódový rozdíl (diff) generovaný AI je u~zavedeného projektu těžko zkontrolovatelný a maže mentální model.
+\item \textbf{Doménová intuice nahlas.}
+Při mentoringu nech juniora vysvětlit, proč je návrh AI v~daném kontextu (ne)vhodný --- přenos intuice je cennější než samotný kódový rozdíl.
+\end{itemize}
+
+\subsection{B2. Pro nové projekty}
+
+\begin{itemize}
+\item \textbf{Architektura člověkem, výplň s~AI.}
+Skeleton a rozhraní navrhni sám (klidně v~dialogu s~lidmi), teprve implementaci vnitřku modulů zrychli s~AI.
+\item \textbf{Počítej s~driftem (\textasciitilde20\,\%).}
+Realizace se od původního návrhu odchýlí.
+Zachyť odchylku v~ADR nebo deníku, ať zůstane vědomá a zdokumentovaná.
+\item \textbf{Procházející kostra (walking skeleton) dřív než šíře.}
+Nejdřív tenká funkční vertikála přes všechny vrstvy, pak teprve rozšiřování s~AI.
+Ověří hranice dosahu škody v~praxi.
+\item \textbf{Tempo vědomě.}
+Rychlost generování není cíl.
+U~nového projektu je levné zpomalit a postavit hranice správně --- drahé je to opravovat později.
+\end{itemize}
+
+\subsection{B3. Společné praktiky}
+
+\begin{itemize}
+\item \textbf{Lehký ADR proces.}
+Markdown v~repozitáři, ne desetistránkový Word.
+Zaznamenává proč, alternativy a kompromisy (trade-offy) --- viz příloha.
+\item \textbf{Vývojářský deník.}
+Krátké poznámky o~směru a důvodech.
+Doplňuje ADR o~průběžný kontext.
+\item \textbf{Pojmenuj roli.}
+Vědomě rozlišuj, zda jsi architekt, krizový manažer, konzultant nebo vývojář --- a tomu přizpůsob, jak AI používáš.
+\item \textbf{Bez tření = pozor.}
+Když smyčka s~AI nemá tření a vše jen potvrzuje, je do procesu zabudované konfirmační zkreslení.
+Vlož vědomě kritický krok.
+\end{itemize}
+
+\subsection{B4. Režimy práce s~AI u~dat pod NDA}
+
+Toto je oblast, kterou je třeba dořešit --- níže uvedené režimy jsou rozhodovací škála, ne hotová politika.
+Pravidlo A1.8 vyžaduje, aby u~dat krytých NDA \textbf{vedení projektu zvolilo jeden z~režimů} ještě před použitím AI nástroje.
+Režimy jsou seřazené od nejpřísnějšího k~nejvolnějšímu; volba je kompromis mezi přísností a použitelností.
+
+\begin{calloutplain}[grey]
+\textbf{Jádro problému:} nástroj typu \enquote{AI v~editoru} odesílá obsah ke zpracování na server poskytovatele.
+Volba \enquote{neukládat data} je deklarace, ne ověřitelná technická záruka --- a u~dat pod NDA nese odpovědnost za přenos vždy odesílatel.
+\end{calloutplain}
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.05\linewidth} L{0.26\linewidth} L{0.34\linewidth} L{0.23\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{\#}} & {\color{white}\textbf{Režim}} & {\color{white}\textbf{Podstata}} & {\color{white}\textbf{Kompromis}} \\
+\midrule
+0 & \br{red}{Zákaz odeslání} & AI se na data pod NDA nepoužije vůbec; jen na nechráněné části. & Nejvyšší jistota, nejnižší přínos AI. \\
+1 & \br{amber}{Lokální / self-hosted model} & Model běží na vlastní infrastruktuře, data neopustí perimetr. & Náklady na provoz a HW; slabší model než cloud. \\
+2 & \br{amber}{Anonymizace / abstrakce vstupu} & Do AI jde jen zobecněný problém bez chráněných identifikátorů a kontextu. & Pracné, riziko zbytkové identifikovatelnosti. \\
+3 & \br{green}{Izolovaný sandbox + ruční reflexe} & AI vývoj probíhá bokem na neutrálním zadání; výsledek se ručně přenese a přepíše do chráněné báze. & Dvojí práce, ale chráněný kód se nikdy neodešle. \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{itemize}
+\item \textbf{Rozhoduje vedení projektu, ne jednotlivý vývojář.}
+Volba režimu je rozhodnutí s~právním dopadem; patří na úroveň, která za NDA odpovídá.
+\item \textbf{Default je režim 0.}
+Pokud rozhodnutí nepadlo, platí zákaz odeslání.
+\item \textbf{Režim 3 jako prakticky dostupný kompromis.}
+Izolovaný sandbox s~ruční reflexí zpět umožní využít AI a přitom chráněný kód nikdy neopustí perimetr --- cenou je dvojí práce a kázeň při přepisu.
+\item \textbf{Kombinace režimů.}
+Režimy se nevylučují: lze např. anonymizovat (2) vstup do lokálního modelu (1).
+\end{itemize}
+
+\subsection{B5. Vrstvená architektura jako podmínka široké AI zóny}
+
+Pravidlo A1.3 říká, že míru kontroly určuje riziko.
+Pozitivní obrácení (naznačené ve Východisku) zní: \emph{dosah škody lze návrhem zmenšit} --- a tím legitimně rozšířit prostor, kde smí AI vést.
+Toto není výmluva pro volnější pravidla, ale návod, jak si volnější pravidla \emph{zasloužit} dobrým návrhem.
+
+\begin{calloutplain}[green]
+Cíl: stáhnout rizikové jádro (bezpečnost, data, integrace) do malé, izolované a dobře hlídané plochy.
+Co zůstane venku --- doménová logika, UI, transformace --- pak leží v~zóně nízkého dosahu škody, kde může AI pracovat téměř bez omezení a kde je chyba lokální a snadno ověřitelná.
+\end{calloutplain}
+
+\medskip
+Co takovou architekturu vytváří:
+
+\begin{itemize}
+\item \textbf{Stabilní kontrakty na hranicích.}
+Rizikové vrstvy schované za jasným rozhraním (interface), které se nemění s~každou změnou logiky.
+AI pracuje proti kontraktu, ne uvnitř citlivé implementace.
+\item \textbf{Izolace bezpečnostní a datové vrstvy.}
+Autentizace, šifrování, perzistence a správa tajemství v~oddělených, malých modulech, kterých se běžný vývoj nedotýká.
+Tyto moduly píše vývojář (viz matice A4); zbytek systému je na nich nezávislý.
+\item \textbf{Čisté oddělení vrstev.}
+Doménová logika neví nic o~perzistenci ani transportu.
+Díky tomu je velká část kódu testovatelná a bezpečně generovatelná, aniž by mohla narušit předpoklady, na kterých rizikové jádro stojí.
+\item \textbf{Hranice dosahu škody jako vědomé rozhodnutí.}
+Při návrhu se explicitně určí, kudy vede čára mezi \enquote{vede AI} a \enquote{vede vývojář} --- a tato čára je zaznamenaná v~ADR, ne implicitní.
+\end{itemize}
+
+\begin{callout}[amber]{Hranice tohoto principu}
+Platí jen tehdy, je-li izolace \emph{skutečná}, ne deklarovaná.
+Pokud rizikové jádro prosakuje do zbytku systému (sdílený stav, kontrakt měnící se s~každou funkcí, bezpečnost rozptýlená napříč kódem), pak \enquote{nízký dosah škody} neexistuje a široká AI zóna je iluze.
+Široká AI zóna je tedy \emph{odměna za doloženě dobrý návrh}, ne výchozí stav.
+\end{callout}
+
+\subsection{B6. Ochrana know-how a odchozí tok dat}
+
+Pravidla v~Části A hlídají hlavně \emph{co vstupuje} do codebase.
+Stejně důležité je \emph{co z~ní odchází} --- AI nástroj je obousměrný kanál a know-how firmy uniká stejnou trubkou, kterou přitéká pomoc.
+
+\begin{calloutplain}[grey]
+Odeslání kódu nebo kontextu do externího AI nástroje je \emph{odchozí tok dat}.
+Týká se ho pravidlo A1.7 (DPA), A1.8 (NDA) a režimy B4 --- ale i tam, kde nejde o~osobní data ani NDA, jde o~know-how, jehož hodnota je v~tom, že ho konkurence nemá.
+\end{calloutplain}
+
+\medskip
+\begin{itemize}
+\item \textbf{Co je know-how, ne jen kód.}
+Doménové modely, integrační vzory, řešení nestandardních problémů, architektonická rozhodnutí --- to je hodnota, kterou firma nashromáždila.
+Odeslání do nástroje, který se z~dat učí nebo je uchovává, je tichý odliv této hodnoty.
+\item \textbf{Princip nejmenšího nutného kontextu.}
+Do AI jde jen tolik kontextu, kolik úkol vyžaduje --- ne celý modul \enquote{pro jistotu}.
+Čím méně odchází, tím menší expozice.
+\item \textbf{Citlivé jádro se neodesílá.}
+Části nesoucí konkurenční výhodu (klíčové algoritmy, doménová specifika) se řeší v~režimu, který je neodešle ven (B4 --- lokální model, anonymizace, izolovaný sandbox).
+\item \textbf{Symetrie s~příchozí stranou.}
+Stejně jako musí být vstup do rizikového jádra plně převzatý vývojářem (A1.2), nesmí být rizikové jádro nekontrolovaně odesíláno ven.
+Hranice platí oběma směry.
+\end{itemize}
+
+% =====================================================================
+% SEKCE: 04-checklisty.tex
+% =====================================================================
+\section{Onboarding checklisty (krok za krokem)}
+
+Praktické kroky pro zahájení práce s~AI na projektu.
+Zaškrtni postupně; každý krok musí být splněn před dalším.
+
+\subsection{Checklist 1 --- Nasazení AI na zavedený projekt}
+
+\begin{itemize}[label={}]
+\item \cb Identifikuj zóny dosahu škody (bezpečnost, data, integrace) a označ je jako vedené vývojářem.
+\item \cb Ověř, že žádné přihlašovací údaje ani klíče nejsou v~repozitáři; pokud ano, řeš jako incident před čímkoli dalším.
+\item \cb Zkontroluj existenci DPA/SCC pro každé externí AI rozhraní, kam by mohla téct osobní data.
+\item \cb Pokud data spadají pod NDA, ověř, že vedení projektu zvolilo režim práce s~AI dle B4.
+\item \cb Nastav, že výstup AI vstupuje jako návrh nebo textová instrukce, ne jako přímý zápis hotových souborů.
+\item \cb Definuj, které úkoly jsou izolovatelné a smí vést AI (testy, dokumentace, lokální doménová logika).
+\item \cb Zajisti charakterizační testy pro místa, kterých se chystáš dotknout.
+\item \cb Domluv s~reviewerem, že u~změn kontraktu se vyžaduje ADR a vysvětlení dopadu na zaručené předpoklady.
+\item \cb Ověř faktor přežití týmu: existuje druhá osoba schopná převzít dotčenou část?
+\end{itemize}
+
+\subsection{Checklist 2 --- Založení nového projektu s~AI}
+
+\begin{itemize}[label={}]
+\item \cb Sepiš architektonický skeleton a hranice modulů dřív, než AI cokoli vygeneruje.
+\item \cb Označ na skeletonu rizikové zóny (autentizace, šifrování, perzistence, tajemství) jako vedené vývojářem.
+\item \cb Pokud data spadají pod NDA, ověř zvolený režim práce s~AI dle B4.
+\item \cb Založ \code{docs/adr/} a napiš ADR-0001 pro nejdůležitější rozhodnutí (perzistence/bezpečnost).
+\item \cb Postav procházející kostru --- tenkou vertikálu přes všechny vrstvy --- ručně nebo s~minimální AI asistencí.
+\item \cb Nastav správu tajemství (např. Key Vault) ručně; AI se jí nedotýká.
+\item \cb Připrav kostru CI/CD; AI smí jen rutinní boilerplate, kontroluje Ops.
+\item \cb Teprve teď otevři širší zónu vedenou AI pro doménovou a UI vrstvu.
+\item \cb Zaveď návyk deníku/ADR pro zachycení odchylky od návrhu.
+\end{itemize}
+
+\subsection{Checklist 3 --- Před každým mergem AI-asistovaného MR}
+
+\begin{itemize}[label={}]
+\item \cb Rozumím každému bloku a dokážu ho obhájit bez AI.
+\item \cb MR nebo commit je označen jako generovaný AI, pokud je.
+\item \cb Změna nezasahuje do zóny vedené vývojářem bez příslušného reviewera.
+\item \cb Pokud se mění kontrakt, existuje ADR.
+\item \cb Žádná tajemství ani klíče v~kódovém rozdílu.
+\item \cb U~dat pod NDA byl dodržen zvolený režim práce s~AI.
+\item \cb Do AI šel jen nutný kontext, ne citlivé jádro nesoucí know-how.
+\item \cb MR neobchází gate (žádné dělení rizikové změny ani falešné označení původu).
+\item \cb Testy popisují chování, ne jen že kód běží.
+\end{itemize}
+
+% =====================================================================
+% SEKCE: 05-projekty.tex
+% =====================================================================
+\section{Kategorizace projektu (jak zařadit)}
+
+Místo výčtu konkrétních projektů (ten bude předmětem samostatného vzorového dokumentu) zde uvádíme rozhodovací vodítko, do které kategorie projekt patří.
+
+\subsection{Zavedený projekt}
+
+\begin{itemize}
+\item \textbf{Znaky:} je v~produkci, má historii, existující integrace a zafixovaný dosah škody.
+\item \textbf{Režim:} plně se řídí Částí A2 a B1. AI konzultuje, vývojář píše.
+\item \textbf{Pozor:} plošná AI-refaktorizace integračních vlastností bez ADR je typický zdroj nákladné nápravy.
+\end{itemize}
+
+\subsection{Hraniční projekt (nový kód v~zavedeném kontextu)}
+
+\begin{itemize}
+\item \textbf{Znaky:} nově psaný kód, který je ale úzce propojený se zavedeným systémem (sdílené kontrakty, data, integrace).
+\item \textbf{Režim:} dokud není izolovaný za stabilním kontraktem, řídí se pravidly pro ZAVEDENÝ projekt.
+\item \textbf{Příležitost:} jako nový kód má šanci postavit hranice a verzování kontraktů správně od začátku.
+\item \textbf{ADR:} rozhodnutí o~tvaru a verzování kontraktů patří do ADR od prvního commitu.
+\end{itemize}
+
+\subsection{Nový projekt (zelená louka)}
+
+\begin{itemize}
+\item \textbf{Znaky:} bez existující báze a integrací; hranice se teprve staví.
+\item \textbf{Režim:} plný režim Části A3 a B2.
+\item \textbf{Postup:} skeleton $\rightarrow$ ADR $\rightarrow$ procházející kostra $\rightarrow$ izolace rizik $\rightarrow$ širší zóna vedená AI.
+\end{itemize}
+
+% =====================================================================
+% SEKCE: 06-priloha.tex
+% =====================================================================
+\section{Příloha: šablona ADR}
+
+ADR (Architecture Decision Record) = krátký záznam architektonického rozhodnutí.
+Markdown soubor v~repozitáři, typicky \code{docs/adr/0001-nazev.md}.
+Zaznamenává proč, ne co.
+
+\begin{tcolorbox}[colback=black!3,colframe=black!20,boxrule=0.4pt,arc=1pt,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,fontupper=\ttfamily\small]
+\begin{Verbatim}[breaklines=true]
+# ADR-0001: <název rozhodnutí>
+
+## Status
+Přijato — RRRR-MM-DD
+
+## Kontext
+Co nás k rozhodnutí vede; relevantní omezení (např. GDPR čl. 32).
+
+## Rozhodnutí
+Co jsme zvolili a jak konkrétně.
+
+## Alternativy
+- Varianta A — proč ne
+- Varianta B — proč ne
+
+## Důsledky
+- Závislosti, které vznikají
+- Kompromisy, které přijímáme
+\end{Verbatim}
+\end{tcolorbox}
+
+\section{Rychlá pravidla na závěr}
+
+\begin{itemize}
+\item \textbf{Nevíš přesně, co kód dělá} $\rightarrow$ nepoužívej.
+\item \textbf{Má to dopad na bezpečnost/data} $\rightarrow$ smíš použít, jen když to plně převezmeš (A1.2): threat model, testy, obhajoba bez AI. Secrets ani tak (A1.4).
+\item \textbf{Neumíš to vysvětlit bez AI} $\rightarrow$ nemerguj (nezačleňuj).
+\item \textbf{Zavedená báze} $\rightarrow$ AI navrhuje, vývojář píše.
+\item \textbf{Nový projekt} $\rightarrow$ nejdřív skeleton a ADR, pak teprve širší zóna vedená AI.
+\item \textbf{Data pod NDA} $\rightarrow$ bez rozhodnutí vedení o~režimu (B4) se AI nepoužije.
+\item \textbf{Dobře izolované rizikové jádro} $\rightarrow$ zbytek smí vést AI téměř bez omezení (B5).
+\item \textbf{Vše přes povinný MR} $\rightarrow$ \enquote{funguje to} není důvod k~mergi (A5).
+\item \textbf{Obcházení gate} $\rightarrow$ porušení samo o~sobě, eskaluje se (A5/A6).
+\item \textbf{Know-how je odchozí tok} $\rightarrow$ citlivé jádro se ven neodesílá (B6).
+\end{itemize}
+
+\end{document}

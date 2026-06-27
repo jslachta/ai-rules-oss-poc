@@ -1,0 +1,17 @@
+# LaTeX build artefakty
+version.tex
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.lof
+*.lot
+
+# Ponech ve verzování: main.tex, sekce/*.tex, Makefile
+# PDF necháváme negenerovat do gitu — buduje se z .tex přes `make`.
+*.pdf

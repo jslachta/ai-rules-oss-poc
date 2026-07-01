@@ -28,6 +28,13 @@ make watch    # průběžný build (vyžaduje latexmk)
 - řádky po `\begin{document}` — preambule, styl, paleta, makra
 - dále sedm sekcí oddělených komentářem `% SEKCE: <jmeno>.tex`
 
+## Metadata a klasifikace dokumentu
+
+Titul, PDF subjekt a klasifikaci v patičce řídí makra `\doctitle`, `\docsubject`
+a `\docclass` v `preamble.tex`; každý dokument je může přepsat přes `\renewcommand`
+(viz `motivace.tex`). Při převzetí šablony jako interní směrnice změň `\docclass`
+na `Interní` — jde o jediné místo pro oba dokumenty.
+
 ## Konvence
 
 - **One-sentence-per-line**: změna věty = jeden řádek v diffu.

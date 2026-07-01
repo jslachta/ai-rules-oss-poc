@@ -12,7 +12,7 @@ mezi *zdokumentovaným* a *nezdokumentovaným*, nýbrž mezi **dostupným** a
 Spousta kontextu je zdokumentovaná dokonale, jen mimo dosah modelu. Rozhoduje
 dostupnost, ne kvalita dokumentace.
 
-> „Je to zdokumentované" ≠ „AI to ví."
+> „Je to zdokumentované" != „AI to ví."
 
 ## Kde nedostupný kontext leží
 

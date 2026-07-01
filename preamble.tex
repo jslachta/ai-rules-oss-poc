@@ -33,6 +33,11 @@
 \titleformat{\subsubsection}{\sffamily\normalsize\bfseries\color{black!70}}{\thesubsubsection}{0.5em}{}
 \titlespacing*{\section}{0pt}{14pt}{8pt}
 
+% ---------- Metadata dokumentu (přepiš v konkrétním .tex) ----------
+\newcommand{\doctitle}{AI-asistovaný vývoj — Pravidla pro projekty}
+\newcommand{\docsubject}{Šablona směrnice + best practices}
+\newcommand{\docclass}{Veřejná šablona — CC-BY 4.0}
+
 % ---------- Hlavička / patička ----------
 \usepackage{fancyhdr}
 \usepackage{lastpage}
@@ -40,8 +45,8 @@
 \fancyhf{}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
-\fancyhead[L]{\sffamily\footnotesize\color{black!45}AI-asistovaný vývoj — Pravidla pro projekty}
-\fancyfoot[C]{\sffamily\footnotesize\color{black!45}Interní — \versionline \quad Strana \thepage{} z \pageref{LastPage}}
+\fancyhead[L]{\sffamily\footnotesize\color{black!45}\doctitle}
+\fancyfoot[C]{\sffamily\footnotesize\color{black!45}\docclass{} — \versionline \quad Strana \thepage{} z \pageref{LastPage}}
 
 % ---------- Tabulky ----------
 \usepackage{tabularx}
@@ -98,8 +103,8 @@
 % ---------- Odkazy ----------
 \usepackage[hidelinks]{hyperref}
 \hypersetup{
-  pdftitle={AI-asistovaný vývoj — Pravidla pro projekty},
-  pdfsubject={Interní směrnice + best practices},
+  pdftitle={\doctitle},
+  pdfsubject={\docsubject},
   bookmarksnumbered=true
 }
 

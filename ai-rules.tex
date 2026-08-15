@@ -171,12 +171,17 @@ U~autentizace, autorizace, šifrování, perzistence, tokenů OAuth a auditního
 Bez tohoto převzetí kód do těchto oblastí nesmí, byť \enquote{funguje}.
 \item \textbf{Smlouva o~zpracování dat (DPA) před odesláním dat.}
 Žádná osobní data se neposílají na externí AI rozhraní bez platné smlouvy o~zpracování (Data Processing Agreement, DPA) --- a u~služeb mimo EU bez standardních smluvních doložek (Standard Contractual Clauses, SCC).
-Přenos bez právního základu je porušení GDPR čl. 28/32.
+Bez doloženého právního základu pro přenos se nástroj nepoužije; posouzení základu patří roli, která za ochranu osobních údajů odpovídá.
 \item \textbf{Data pod NDA a nedůvěryhodné AI nástroje.}
-AI nástroj, který odesílá kód nebo data ke zpracování třetí straně, je z~pohledu mlčenlivosti (NDA) a GDPR \emph{přenosem dat třetí straně} --- bez ohledu na to, že nástroj nabízí volbu \enquote{neukládat} či \enquote{neučit se z~dat}.
+AI nástroj, který odesílá kód nebo data ke zpracování třetí straně, se pro účely této směrnice považuje za \emph{přenos dat třetí straně} --- bez ohledu na to, že nástroj nabízí volbu \enquote{neukládat} či \enquote{neučit se z~dat}.
 Deklarace poskytovatele není ověřitelná záruka.
 Proto: u~dat krytých NDA musí vedení projektu \emph{explicitně rozhodnout o~režimu práce s~AI} (viz B4) PŘED použitím nástroje.
 Defaultní režim při absenci rozhodnutí je nejpřísnější (zákaz odeslání).
+\item \textbf{Konfigurace AI nástroje je součástí kódu.}
+Soubory, které řídí chování AI nástroje (pravidla, systémové instrukce, konfigurace vývojového prostředí), podléhají stejnému review jako kód, který ovlivňují, a patří do soupisu rizikových cest dle A5.2.
+AI je smí navrhnout, ale nesmí je zavést --- změna těchto souborů bez převzetí dle A1.2 je porušení směrnice.
+Kontroluje se i to, co v~diffu není na první pohled vidět (neviditelné znaky, změna kódování).
+Důvod: kdo změní pravidla, změní všechna pravidla najednou --- včetně těch, která mají tu změnu zachytit.
 \end{enumerate}
 
 \subsection{A2. Směrnice pro dlouhodobé / zavedené projekty}

@@ -1,0 +1,133 @@
+% =====================================================================
+%  AI-Assisted Development — two-page extract
+%  Engine: XeLaTeX  |  Build: cd en && xelatex enisa-extract.tex (twice,
+%          because of \pageref{LastPage} in the footer)
+%  Derived from en/ai-rules.tex (and two sentences of en/motivation.tex).
+%  Wording, axis names and modal verbs are taken over verbatim from the
+%  full version — do not rephrase them here, shorten only.
+%  Shares the English preamble (preamble.tex); no local style changes.
+% =====================================================================
+\input{preamble.tex}
+
+% Metadata of this extract — the footer carries the version of the SOURCE
+% document it is derived from, not the build version of the extract.
+\renewcommand{\doctitle}{AI-Assisted Development — two-page extract}
+\renewcommand{\docsubject}{Two-page extract of a policy template for AI-assisted development}
+\renewcommand{\versionline}{extract of v0.1.1 (2026-09-17)}
+
+\begin{document}
+
+% ===================== TITLE =====================
+{\sffamily\LARGE\bfseries\color{navy}AI-Assisted Development\par}
+\vspace{2pt}
+{\sffamily\large\bfseries\color{blue}Rules for long-lived and new projects --- two-page extract\par}
+\vspace{6pt}
+\noindent{\color{blue}\rule{\linewidth}{1.2pt}}\par
+\vspace{8pt}
+
+\noindent
+A framework for managing the risks of AI-assisted development, to adopt and adapt --- binding policy and best practices.
+This is a two-page extract of it, derived from version \textbf{v0.1.1 (2026-09-17)}; references such as A1.2 or A4 point into the full document: \url{https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-en.pdf}.
+
+% ===================== PROBLEM =====================
+\section*{The problem}
+
+AI tools for development assistance dramatically increase the speed at which code comes into being.
+AI does not change the old questions; it merely raises the stakes by making it possible to produce risk-bearing code faster than ever before.
+And a large AI-generated diff is hard to review in an established project, and erases the mental model (B1).
+
+Every change to the codebase goes through a mandatory merge request; pushing directly to the main branch is prohibited (A5.1).
+Review is therefore not the question.
+The question is where the human judgement has to be deepest --- because the greater the risk, the higher the mandatory degree of direct developer control (A1.3).
+The framework therefore does not ask who or what wrote the code, but: how much damage the fault will cause, how quickly we will detect it and how easily we can undo it.
+
+% ===================== AXES =====================
+\section*{The three axes}
+
+\noindent
+\textbf{Blast radius --- how large the damage is.}
+How much fails when it goes wrong (from a local bug to a systemic security incident).
+In an established project it is already fixed and often large (integrations, data, dependencies); in a new project it can still be designed so that the risk-bearing parts are small and isolated.
+Blast radius is largely a result of the architecture: isolating the security and data layers behind stable contracts shrinks the risk-bearing core to a small, well-guarded surface (B5).
+
+\smallskip
+\noindent
+\textbf{Verifiability --- how easily we can tell that it is wrong (or right).}
+A fault in domain logic fails a test straight away; a fault in encryption does not show up in a test, but as a leak months later.
+Poor verifiability = the fault waits quietly for a long time.
+Tests describing the current behaviour, written before an uncovered area is modified, lower the risk of a silent regression (B1); clean separation of layers leaves a large part of the code testable (B5).
+
+\smallskip
+\noindent
+\textbf{Reversibility --- how easily we undo it when we get it wrong.}
+A feature flag or a reversible migration lowers the risk even with a large blast radius; deleted data without a backup is irreversible even with a small one.
+
+\begin{calloutplain}[amber]
+The axes combine --- the worst case is a large blast radius \emph{and} poor verifiability \emph{and} irreversibility.
+Conversely, a large blast radius that is easy to verify and easy to reverse (feature flag, quick rollback) is manageable.
+\end{calloutplain}
+
+% ===================== FROM AXES TO A DECISION =====================
+\section*{From the axes to a decision on one change}
+
+The axes locate the change in the responsibility matrix (A4): who leads, and who the mandatory reviewer is.
+
+The procedure for a single change, with the matrix rows it refers to below it:
+
+\begin{enumerate}
+\item \textbf{Read the mode off the matrix.}
+\enquote{AI-led} = AI generates, the developer verifies.
+\enquote{Developer-led} = AI may assist, but the developer must take full ownership of the output under A1.2 (understands it, backs it with a threat model and tests, defends it without AI).
+The only exception is secrets management --- there AI must not generate at all (A1.4).
+\item \textbf{Let verifiability and reversibility override the radius.}
+Encryption has \mbox{\texttt{$-$\,/\,$-$}} --- a fault there is hard to detect and hard to undo, so the developer leads regardless of everything else.
+CI/IaC has a large radius, but \mbox{\texttt{$\sim$\,/\,+}} (reversible by rollback), so AI may at least do the routine scaffolding.
+\item \textbf{Apply the project type where it makes a difference.}
+The difference between established and new is most pronounced in the domain and UI layers: in a new project AI may lead, in an established one it may only propose.
+The security and data layers are developer-led in both cases --- the risk does not depend on the age of the project.
+\item \textbf{Pass the gate.}
+The paths falling into the developer-led zone are listed explicitly in the repository; a change in these paths requires the corresponding reviewer under matrix A4 --- regardless of the size of the change (A5.2).
+The reviewer MUST reject a merge request that does not meet Part A --- in particular one without an explanation of the design decision, without an ADR for a contract change, or with code the author does not understand.
+\enquote{It works} is not sufficient justification for a merge (A5.1).
+\end{enumerate}
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.19\linewidth} L{0.09\linewidth} L{0.06\linewidth} L{0.17\linewidth} L{0.16\linewidth} L{0.16\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Area}} & {\color{white}\textbf{Radius}} & {\color{white}\textbf{Vf\,/\,Rv}} & {\color{white}\textbf{Established}} & {\color{white}\textbf{New project}} & {\color{white}\textbf{Reviewer}} \\
+\midrule
+Domain / business logic & \br{green}{Low} & \br{green}{+\,/\,+} & AI proposes, developer verifies & \br{green}{AI-led} & Developer \\
+Integration contracts / properties & \br{amber}{Med.--high} & \br{red}{$\sim$\,/\,$-$} & \br{red}{Developer-led + ADR} & \br{amber}{Developer-led + ADR} & Senior developer \\
+Encryption, keys & \br{red}{Critical} & \br{red}{$-$\,/\,$-$} & \br{red}{Developer-led} & \br{red}{Developer-led} & Senior + Security \\
+Secrets management & \br{red}{Critical} & \br{red}{$-$\,/\,$-$} & \br{red}{AI must not generate} & \br{red}{AI must not generate} & Senior + Ops \\
+CI/CD, infrastructure as code & \br{red}{High} & \br{amber}{$\sim$\,/\,+} & \br{amber}{AI for routine scaffolding only} & \br{amber}{AI for routine scaffolding only} & Senior + Ops \\
+\bottomrule
+\end{tabularx}
+
+\smallskip
+\noindent
+\textbf{Vf\,/\,Rv} = verifiability\,/\,reversibility: \mbox{\texttt{+}} good, \mbox{\texttt{$\sim$}} partial, \mbox{\texttt{$-$}} poor.
+
+% ===================== EXAMPLE =====================
+\section*{One example: a bulk change to integration properties}
+
+Renaming integration properties, changing contracts and bulk refactors are not done with an AI tool across the whole codebase (A2.2).
+This pattern repeatedly leads to high remediation costs (on the order of person-days).
+
+Along the axes the change sits at a medium-to-high radius with \mbox{\texttt{$\sim$\,/\,$-$}}: partial verifiability, poor reversibility.
+The row therefore reads \emph{developer-led + ADR}, with a senior developer as the mandatory reviewer --- in an established project and in a new one alike.
+Any change to a public contract (API, integration interface, schema) requires an Architecture Decision Record BEFORE implementation, regardless of who or what wrote the code (A2.3).
+And the reviewer asks for an explanation of why the change does not break the assumptions the rest of the system (and the integrations downstream) relies on --- not merely that the tests passed (A2.4).
+
+% ===================== CLOSING =====================
+\section*{What this document is not}
+
+It is shared as a contribution to the discussion.
+The framework is a template to adopt and adapt, not the policy of a particular organisation: take what fits, adapt or drop the rest.
+It does not try to replace work that others have done better; where some governance already exists, it replaces none of it.
+It is not meant to be a mapping table either: claiming that a given rule \enquote{corresponds} to a particular provision of another document is a commitment nobody here would carry.
+It is distributed under the CC-BY 4.0 licence (free use including commercial, with attribution).
+
+\end{document}

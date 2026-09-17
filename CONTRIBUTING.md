@@ -12,8 +12,10 @@ větší cenu než cokoli od stolu.
   nepokrývá? Popište situaci — i bez návrhu řešení je to užitečné.
 - **Zpřesnění formulací.** Místo, které je nejednoznačné nebo se dá
   pochopit špatně.
-- **Překlady.** Dokument je česky; anglická (nebo jiná) verze rozšíří
-  dosah.
+- **Překlady.** Vedle české verze existuje anglická v `en/`; obě se
+  vydávají ve stejné verzi, takže věcná změna patří do obou. Další
+  jazyk podle stejného vzoru (podsložka + vlastní `preamble.tex`)
+  rozšíří dosah.
 
 ## Jak na to
 

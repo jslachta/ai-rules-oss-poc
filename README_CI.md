@@ -15,6 +15,13 @@ přepisuje se při každém tagu, takže URL na něj je stabilní **permalink**.
 Verze žije *uvnitř* PDF (patička + titulka) a v `ai-dev-rules.json`;
 historii vydání drží `index.md` ve větvi `releases`.
 
+Totéž platí pro anglickou variantu ze složky `en/`: vydává se ve stejném
+běhu, se stejnou verzí, jen s postfixem `-en` v názvu assetu
+(`ai-dev-rules-en.pdf`, `ai-dev-rules-motivation-en.pdf`,
+`ai-dev-rules-en.json`). Anglické dokumenty se kompilují z adresáře `en/`,
+aby `\input{preamble.tex}` trefil anglickou preambuli; CI proto kopíruje
+vygenerovaný `version.tex` i tam.
+
 Hlavní větev (`main`) je **čistě zdroj** — žádné PDF. Výstupy žijí
 v oddělené větvi `releases` (model jako `gh-pages`).
 

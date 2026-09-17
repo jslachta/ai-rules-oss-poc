@@ -1,33 +1,37 @@
 # Pravidla pro AI-asistovaný vývoj
 
-Rámec pro řízení rizik při vývoji softwaru s asistencí AI — a stejně tak
+Rámec pro řízení rizik při vývoji softwaru s asistencí AI - a stejně tak
 bez ní. Je koncipován jako šablona k převzetí a úpravě, nikoli jako hotová
 firemní směrnice.
 
 **[Stáhnout aktuální PDF](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules.pdf)**
 
 Doprovodný text **[Proč tato pravidla](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-motivace.pdf)**
-vysvětluje motivaci za rámcem — z čeho vyrostl a proč na něm záleží.
+vysvětluje motivaci za rámcem - z čeho vyrostl a proč na něm záleží.
+
+English version: **[rules](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-en.pdf)**
+· **[motivation](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-motivation-en.pdf)**
+· [zdroj v `en/`](en/) - vydává se ve stejném tagu a stejné verzi jako česká varianta.
 
 ## O co jde
 
 Debata o AI ve vývoji se často vede kolem otázky, zda AI smí psát produkční
 kód. Nosnější je ptát se jinak: jak velkou škodu chyba způsobí, jak rychle
 ji odhalíme a jak snadno ji vrátíme. Tyto otázky platily dávno před AI. AI
-je nemění — pouze zrychluje produkci kódu včetně toho rizikového.
+je nemění - pouze zrychluje produkci kódu včetně toho rizikového.
 
 Rámec stojí na několika myšlenkách:
 
-- **Riziko se měří na třech osách** — dosah škody (blast radius),
+- **Riziko se měří na třech osách** - dosah škody (blast radius),
   ověřitelnost (jak rychle se chyba pozná) a reverzibilita (jak snadno se
   vrátí). Velký dopad, který je vratný, je zvládnutelný; malý dopad, který
   je nevratný, zvládnutelný být nemusí.
-- **Převzetí kódu jako vlastního** — rozhodující není, zda kód napsala AI,
+- **Převzetí kódu jako vlastního** - rozhodující není, zda kód napsala AI,
   ale zda mu vývojář rozumí, umí jej obhájit a doložit. Co tuto laťku
   splní, smí i do rizikových oblastí; co ne, nesmí nikam.
-- **Zavedené vs. nové projekty** — pravidla se liší podle toho, zda už
+- **Zavedené vs. nové projekty** - pravidla se liší podle toho, zda už
   existuje kódová báze s historií, nebo se hranice teprve staví.
-- **Hranice lze navrhnout** — vhodná architektura zmenší rizikové jádro
+- **Hranice lze navrhnout** - vhodná architektura zmenší rizikové jádro
   tak, že většina kódu spadne do nízkorizikové zóny, kde AI může pracovat
   téměř bez omezení.
 
@@ -36,19 +40,22 @@ Dokument má dvě části: **závaznou směrnici** (část A) a **best practices
 
 ## Pro koho
 
-Pro vývojové týmy, které chtějí AI používat uvážlivě — bez plošného zákazu
+Pro vývojové týmy, které chtějí AI používat uvážlivě - bez plošného zákazu
 i bez bezvýhradného nasazení. Pasáže jako eskalační autorita jsou záměrně
 obecné a předpokládají doplnění podle konkrétní organizační struktury.
 
 ## Build
 
 Zdroj je v LaTeXu (XeLaTeX). PDF se needituje ručně, generuje se ze zdroje.
-Oba dokumenty sdílejí styl (`preamble.tex`):
+Oba dokumenty sdílejí styl (`preamble.tex`); anglická varianta má v `en/`
+vlastní preambuli (jazyk a uvozovky), jinak je shodná:
 
 ```sh
-make              # vytvoří obě PDF (ai-rules + motivace)
-make ai-rules.pdf # jen hlavní dokument
-make motivace.pdf # jen doprovodný text
+make              # vytvoří všechna čtyři PDF (cs + en)
+make cs           # jen česká varianta (kořen)
+make en           # jen anglická varianta (en/)
+make ai-rules.pdf # jen hlavní dokument, česky
+make motivace.pdf # jen doprovodný text, česky
 make clean        # úklid pomocných souborů
 ```
 
@@ -57,15 +64,18 @@ Detaily sazby a struktury: [README_TEX.md](README_TEX.md).
 ## Vydávání
 
 PDF se publikuje automaticky při git tagu `vX.Y.Z` do větve `releases`,
-která drží stabilní odkaz na poslední vydání. Nastavení CI/CD a release
-procesu: [README_CI.md](README_CI.md).
+která drží stabilní odkaz na poslední vydání. Obě jazykové varianty se
+vydávají zároveň a nesou stejnou verzi; anglické assety mají postfix `-en`
+(`ai-dev-rules-en.pdf`, `ai-dev-rules-motivation-en.pdf`,
+`ai-dev-rules-en.json`). Nastavení CI/CD a release procesu:
+[README_CI.md](README_CI.md).
 
 ## Přispívání
 
-Připomínky, oponentura a zkušenosti z praxe jsou vítané — rámec vznikl
+Připomínky, oponentura a zkušenosti z praxe jsou vítané - rámec vznikl
 z praxe a praxí se zpřesňuje. Viz [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-[CC-BY 4.0](LICENSE) — volné použití včetně komerčního, jedinou podmínkou
+[CC-BY 4.0](LICENSE) - volné použití včetně komerčního, jedinou podmínkou
 je uvedení autora.

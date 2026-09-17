@@ -1,0 +1,605 @@
+% =====================================================================
+%  AI-Assisted Development — Rules for long-lived and new projects
+%  Engine: XeLaTeX  |  Build: make  (see Makefile)
+%  Structure: MERGED DRAFT - everything in one main .tex (easier manual review).
+%             Once the draft is frozen it can be split into sections/*.tex again.
+%  Diff convention: one-sentence-per-line in content files.
+%  English translation of ../ai-rules.tex — keep both in sync.
+% =====================================================================
+\input{preamble.tex}
+
+
+\begin{document}
+
+% ===================== TITLE PAGE =====================
+\thispagestyle{empty}
+\vspace*{3cm}
+{\sffamily\fontsize{30}{34}\selectfont\bfseries\color{navy}AI-Assisted Development\par}
+\vspace{4pt}
+{\sffamily\Large\bfseries\color{blue}Rules for long-lived and new projects\par}
+\vspace{10pt}
+{\color{blue}\rule{\linewidth}{1.5pt}}\par
+\vspace{12pt}
+{\sffamily\large\itshape\color{black!55}An adaptable template --- binding policy and best practices\par}
+\vspace{20pt}
+{\sffamily\small\color{black!50}
+A framework for managing the risks of AI-assisted development, to adopt and adapt\par
+\vspace{2pt}
+Version \versionline\par}
+\vfill
+\newpage
+
+% ===================== TABLE OF CONTENTS =====================
+\tableofcontents
+\newpage
+
+% ===================== SECTIONS =====================
+% =====================================================================
+% SECTION: 00-how-to-read.tex
+% =====================================================================
+\section{How to read this document}
+
+\begin{callout}[amber]{This is a template, not a finished policy}
+The document is a framework to adopt and adapt, not the policy of a particular organisation.
+Places such as \enquote{project leadership decides} or the escalation authority are deliberately generic --- fill them in according to your own structure of roles.
+Take what fits; adapt or drop the rest.
+It is distributed under the CC-BY 4.0 licence (free use including commercial, with attribution).
+\end{callout}
+
+\medskip
+\textbf{The document has two clearly separated parts.}
+Do not confuse them --- they differ in how binding they are.
+
+\begin{callout}[light]{PART A --- Policy (binding)}
+Rules that MUST be followed.
+A breach is grounds for rejecting a merge request, and in risk-bearing areas it can mean regulatory exposure (NIS2/GDPR).
+\textbf{Wording:} \enquote{must}, \enquote{must not}, \enquote{is prohibited}.
+\end{callout}
+
+\begin{callout}[green]{PART B --- Best practices (recommendations)}
+Practices that raise quality and lower risk, but remain subject to engineering judgement.
+Deviation is acceptable when it is deliberate and defensible.
+\textbf{Wording:} \enquote{we recommend}, \enquote{appropriate}, \enquote{consider}.
+\end{callout}
+
+\medskip
+\textbf{Two project domains:} the rules differ depending on whether this is a \textbf{long-lived / established project} (\emph{legacy} --- it exists, it runs, it has history), or a \textbf{new project} (greenfield, where the boundaries are still being drawn).
+
+\begin{callout}[amber]{Borderline case}
+An actively developed established project = ESTABLISHED.
+What decides is the existence of the codebase and its blast radius, not the intensity of current development.
+A new module inside an established system follows the rules for established projects until it is isolated behind a stable contract (interface).
+\end{callout}
+
+% =====================================================================
+% SECTION: 01-premise.tex
+% =====================================================================
+\section{Premise: why the rules differ with the age of the project}
+
+The difference is not arbitrary.
+It follows from two factors that differ fundamentally between an established and a new project:
+
+\begin{itemize}
+\item \textbf{Mental model.}
+In an established project there is documented and undocumented knowledge that AI does not have and cannot reconstruct from the code alone.
+Just as AI does not know the undocumented context of the code, it does not know the undocumented context above it either --- the project, the infrastructure, the organisation and everything beyond, as far as the decisions reach.
+Code is only the most visible layer; below it and above it lie the reasons you cannot read out of the artefacts themselves --- why something is built the way it is, what once broke, which dependencies must not be touched.
+In a new project the model is only being formed --- and AI can quietly replace it before it ever comes into being.
+\item \textbf{Blast radius.}
+It denotes the extent of the damage caused by a fault in a given part of the code.
+In an established project it is already fixed and often large (integrations, data, dependencies).
+In a new project it can still be designed so that the risk-bearing parts are small and isolated.
+\end{itemize}
+
+The size of the damage is not the whole risk picture, however.
+Just as important is how quickly we \emph{detect} a fault and how easily we \emph{undo} it.
+We therefore measure the risk of a given part of the code along three axes:
+
+\begin{itemize}
+\item \textbf{Blast radius --- how large the damage is.}
+How much fails when it goes wrong (from a local bug to a systemic security incident).
+\item \textbf{Verifiability --- how easily we can tell that it is wrong (or right).}
+A fault in domain logic fails a test straight away; a fault in encryption does not show up in a test, but as a leak months later.
+Poor verifiability = the fault waits quietly for a long time.
+\item \textbf{Reversibility --- how easily we undo it when we get it wrong.}
+A feature flag or a reversible migration lowers the risk even with a large blast radius; deleted data without a backup is irreversible even with a small one.
+\end{itemize}
+
+\begin{calloutplain}[amber]
+The axes combine --- the worst case is a large blast radius \emph{and} poor verifiability \emph{and} irreversibility (the fault is large, we do not see it for a long time, and it cannot be taken back).
+Conversely, a large blast radius that is easy to verify and easy to reverse (feature flag, quick rollback) is manageable.
+This is why the degree of direct developer control (A1.3) is driven not only by the size of the damage, but by all three axes together.
+\end{calloutplain}
+
+\begin{calloutplain}[grey]
+Consequence: in an established project the rules protect EXISTING understanding from erosion.
+In new projects they make sure understanding comes into being at all, and that the risk boundaries are drawn correctly from the start.
+\end{calloutplain}
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.20\linewidth} L{0.38\linewidth} L{0.38\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Factor}} & {\color{white}\textbf{Long-lived / established}} & {\color{white}\textbf{New project}} \\
+\midrule
+Mental model & Exists, is valuable, AI does not know it & Still forming, AI can crowd it out \\
+Blast radius & \br{red}{Fixed, often large} & \br{green}{Can be designed small and isolated} \\
+Main AI risk & \br{red}{Silent regression, breaking guaranteed assumptions} & \br{amber}{A developer without a model of their own code} \\
+Role of the rules & Protect understanding from erosion & Ensure understanding comes into being \\
+Width of the AI-led zone & Narrower --- only isolatable tasks & Wider --- once the skeleton and ADRs exist \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{callout}[green]{Blast radius is a design variable, not fate}
+A positive consequence follows from the table: blast radius is not fixed --- it is largely a \emph{result of the architecture}.
+With a well-layered design, where the security and data layers are isolated behind stable contracts, the risk-bearing core shrinks to a small, well-guarded surface.
+Most of the code then lies in the low-blast-radius zone, where AI can work almost without restriction.
+Architecture is therefore not only a defence against AI, but also \emph{a way to let AI safely go further} --- developed further in B5.
+\end{callout}
+
+% =====================================================================
+% SECTION: 02-part-a.tex
+% =====================================================================
+\begin{partbanner}[navy]
+\mbox{PART A} --- Policy (binding)
+\end{partbanner}
+
+\subsection{A1. Rules that apply to all projects}
+
+They apply regardless of the age of the project and take precedence over everything below.
+
+\begin{enumerate}[label=\textbf{A1.\arabic*}]
+\item \textbf{The understanding rule.}
+Code that the developer does not understand and cannot defend without AI MUST NOT be merged --- regardless of the fact that it \enquote{works}.
+\item \textbf{Ownership.}
+The question is not whether AI wrote the code, but whether the developer has fully taken ownership of it.
+That means: understanding it, being able to explain its trade-offs, backing it with tests --- and in risk-bearing areas with a threat model as well --- and putting it through the appropriate review.
+Whatever meets these conditions may be used even in risk-bearing areas; whatever does not must not be used anywhere.
+The exception is secrets management (A1.4), where the ban is absolute regardless of ownership.
+\item \textbf{Risk drives control.}
+The greater the risk --- the size of the damage, the poorer the verifiability and the poorer the reversibility (see Premise) --- the higher the mandatory degree of direct developer control.
+Classification follows the matrix in A4.
+\item \textbf{Secrets and keys.}
+AI MUST NOT generate the handling of credentials, keys and tokens (secrets management).
+No credentials, keys or tokens in the code or the repository --- never, in any project.
+This is not about understanding but about the fact that working with real secrets through AI is itself a leak of them; hence the exception from principle A1.2.
+\item \textbf{Marking the origin.}
+AI-generated code must be marked in the commit or the merge request (e.g. \code{[ai-generated]}) for auditability.
+\item \textbf{The security layer --- the highest bar for ownership.}
+For authentication, authorisation, encryption, persistence, OAuth tokens and audit logging, principle A1.2 applies in its strictest form: no matter who designed the code, the developer must take full ownership of it --- back it with a threat model and tests, and defend every decision without AI.
+Without that ownership the code must not enter these areas, even if it \enquote{works}.
+\item \textbf{A data processing agreement (DPA) before any data is sent.}
+No personal data is sent to an external AI interface without a valid Data Processing Agreement (DPA) --- and, for services outside the EU, without Standard Contractual Clauses (SCC).
+Without a documented legal basis for the transfer the tool is not used; assessing that basis belongs to the role responsible for personal data protection.
+\item \textbf{Data under NDA and untrusted AI tools.}
+An AI tool that sends code or data to a third party for processing is, for the purposes of this policy, considered a \emph{transfer of data to a third party} --- regardless of the fact that the tool offers a \enquote{do not store} or \enquote{do not train on my data} option.
+A provider declaration is not a verifiable guarantee.
+Therefore: for data covered by an NDA, project leadership must \emph{explicitly decide on the mode of working with AI} (see B4) BEFORE the tool is used.
+The default mode in the absence of a decision is the strictest one (sending prohibited).
+\item \textbf{The configuration of the AI tool is part of the code.}
+Files that govern the behaviour of an AI tool (rules, system instructions, development environment configuration) are subject to the same review as the code they influence, and belong in the register of risk-bearing paths under A5.2.
+AI may propose them, but must not introduce them --- changing these files without ownership under A1.2 is a breach of this policy.
+What is not immediately visible in the diff is checked as well (invisible characters, a change of encoding).
+Reason: whoever changes the rules changes all the rules at once --- including those meant to catch that very change.
+\end{enumerate}
+
+\subsection{A2. Policy for long-lived / established projects}
+
+This concerns systems that are in production, have history and a fixed blast radius.
+
+\begin{enumerate}[label=\textbf{A2.\arabic*}]
+\item \textbf{No unowned writes into an established codebase.}
+AI must not write into an established codebase autonomously --- its output enters as a proposal, which the developer takes ownership of under A1.2 (understands it, backs it, defends it), not as a direct commit.
+Where the sensitivity of the project requires it, results are handed over solely as textual instructions for the development environment, not as finished files.
+\item \textbf{No blanket AI refactoring.}
+Renaming integration properties, changing contracts and bulk refactors are not done with an AI tool across the whole codebase.
+This pattern repeatedly leads to high remediation costs (on the order of person-days).
+\item \textbf{A contract change = an ADR.}
+Any change to a public contract (API, integration interface, schema) requires an Architecture Decision Record (ADR) BEFORE implementation, regardless of who or what wrote the code.
+\item \textbf{The reviewer verifies the guaranteed assumptions.}
+In an established project the reviewer asks for an explanation of why the change does not break the assumptions the rest of the system (and the integrations downstream) relies on --- not merely that the tests passed.
+\item \textbf{AI assists, the developer takes ownership.}
+The default in an established codebase is that AI advises and the developer takes ownership of the output under A1.2.
+The AI-led mode (wider latitude) is an exception, permitted only for isolatable, easily verifiable tasks (see A4).
+\end{enumerate}
+
+\subsection{A3. Policy for new projects}
+
+Greenfield is an opportunity to draw the boundaries correctly.
+The rules aim to let AI speed up the start without replacing the formation of the mental model and the architecture.
+
+\begin{enumerate}[label=\textbf{A3.\arabic*}]
+\item \textbf{The skeleton and the boundaries first.}
+The architectural skeleton and the blast-radius boundaries (where security, data and integrations lie) are defined by the developer BEFORE AI starts generating the filling.
+\item \textbf{ADRs from commit no. 1.}
+Key decisions (persistence, authentication, encryption, module boundaries) have ADRs from the beginning.
+A new project has no \enquote{it is historically that way} excuse.
+\item \textbf{Isolation of the risk-bearing parts.}
+The security and data layers are designed to be small, isolated and testable, so that the AI-led zone can safely be wider.
+\item \textbf{Bus factor from the start.}
+Even in a new project there must be at least one other person able to take over the code.
+AI does not count towards this factor.
+\item \textbf{A wider AI-led zone only once the above is met.}
+Only once the skeleton, the ADRs and the isolation exist may AI lead development of the domain and UI layers to a wider extent than in an established project.
+\end{enumerate}
+
+\subsection{A4. Responsibility matrix by blast radius and project type}
+
+A combined matrix: where AI leads, where the developer leads and who the mandatory reviewer is.
+It differs by project domain.
+\enquote{AI-led} = AI generates, the developer verifies; \enquote{developer-led} = AI may assist, but the developer must take full ownership of the output under A1.2 (understands it, backs it with a threat model and tests, defends it without AI).
+The only exception is secrets management --- there AI must not generate at all (A1.4).
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.18\linewidth} L{0.10\linewidth} L{0.07\linewidth} L{0.17\linewidth} L{0.17\linewidth} L{0.17\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Area}} & {\color{white}\textbf{Radius}} & {\color{white}\textbf{Vf\,/\,Rv}} & {\color{white}\textbf{Established}} & {\color{white}\textbf{New project}} & {\color{white}\textbf{Reviewer}} \\
+\midrule
+Domain / business logic & \br{green}{Low} & \br{green}{+\,/\,+} & AI proposes, developer verifies & \br{green}{AI-led} & Developer \\
+UI components, forms & \br{green}{Low} & \br{green}{+\,/\,+} & AI proposes & \br{green}{AI-led} & Developer \\
+Tests, documentation & \br{green}{Low} & \br{green}{+\,/\,+} & AI-led & \br{green}{AI-led} & Developer \\
+API endpoints, input validation & \br{amber}{Medium} & \br{amber}{+\,/\,$\sim$} & Mixed, contract by hand & \br{amber}{Mixed} & Senior developer \\
+Integration contracts / properties & \br{amber}{Med.--high} & \br{red}{$\sim$\,/\,$-$} & \br{red}{Developer-led + ADR} & \br{amber}{Developer-led + ADR} & Senior developer \\
+Authentication, authorisation & \br{red}{High} & \br{red}{$-$\,/\,$\sim$} & \br{red}{Developer-led} & \br{red}{Developer-led} & Senior + Security \\
+Encryption, keys & \br{red}{Critical} & \br{red}{$-$\,/\,$-$} & \br{red}{Developer-led} & \br{red}{Developer-led} & Senior + Security \\
+Persistence, DB migrations & \br{red}{High} & \br{red}{$\sim$\,/\,$-$} & \br{red}{Developer-led} & \br{red}{Developer-led} & Senior developer \\
+Secrets management & \br{red}{Critical} & \br{red}{$-$\,/\,$-$} & \br{red}{AI must not generate} & \br{red}{AI must not generate} & Senior + Ops \\
+CI/CD, infrastructure as code & \br{red}{High} & \br{amber}{$\sim$\,/\,+} & \br{amber}{AI for routine scaffolding only} & \br{amber}{AI for routine scaffolding only} & Senior + Ops \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{calloutplain}[grey]
+\textbf{Vf\,/\,Rv} = verifiability\,/\,reversibility: \mbox{\texttt{+}} good, \mbox{\texttt{$\sim$}} partial, \mbox{\texttt{$-$}} poor.
+How to read it: encryption has \mbox{\texttt{$-$\,/\,$-$}} --- a fault there is hard to detect and hard to undo, so the developer leads regardless of everything else.
+CI/IaC has a large radius, but \mbox{\texttt{$\sim$\,/\,+}} (reversible by rollback), so AI may at least do the routine scaffolding.\\[4pt]
+\textbf{Reading the matrix:} the difference between established and new is most pronounced in the domain and UI layers: in a new project AI may lead, in an established one it may only propose.
+The security and data layers are developer-led in both cases --- the risk does not depend on the age of the project.
+\end{calloutplain}
+
+\subsection{A5. Enforcement and review of the boundaries}
+
+Rules that cannot be enforced will be bypassed by a lazy process.
+Enforcement rests on two layers: the process layer (mandatory, works even without strong infrastructure) and the technical layer (recommended reinforcement, introduced as means allow).
+The rules are \emph{impersonal and symmetrical} --- they apply equally to a junior, a senior and an architect. The gate does not check people, it checks artefacts at the boundary.
+
+\begin{enumerate}[label=\textbf{A5.\arabic*}]
+\item \textbf{The process layer (mandatory).}
+Every change to the codebase goes through a mandatory merge request (MR); pushing directly to the main branch is prohibited.
+The reviewer MUST reject an MR that does not meet Part A --- in particular one without an explanation of the design decision, without an ADR for a contract change, or with code the author does not understand.
+\enquote{It works} is not sufficient justification for a merge.
+\item \textbf{A register of risk-bearing paths.}
+The paths (directories, modules) falling into the developer-led zone (security, data, secrets, persistence, CI/IaC) are listed explicitly in the repository.
+A change in these paths requires the corresponding reviewer under matrix A4 --- regardless of the size of the change.
+\item \textbf{The technical layer (recommended, as means allow).}
+Where the infrastructure permits, the process rules are reinforced automatically:
+a \code{CODEOWNERS} file binds risk-bearing paths to mandatory reviewers;
+a CI gate (a check job) verifies the presence of an ADR for a contract change and the marking of origin (\code{[ai-generated]}).
+The absence of this layer does NOT void the process obligations --- it merely fails to replace them with automation.
+\item \textbf{Periodic review of the boundaries.}
+Not only individual MRs but the boundaries themselves are reviewed (quarterly is recommended):
+Does the line between \enquote{AI-led} and \enquote{developer-led} still hold?
+Has the risk-bearing core seeped into ordinary code (shared state, security scattered around)?
+Has the blast radius grown in parts that used to be low-risk?
+The review is carried out by a role with an overview of architecture and security, independently of the authors of the changes.
+\item \textbf{No circumvention.}
+Deliberately bypassing the gate (e.g. splitting a risk-bearing change into small MRs, disabling a check, falsely marking the origin) is a breach of the policy in itself --- regardless of whether the resulting code \enquote{works}.
+\end{enumerate}
+
+\subsection{A6. Escalation on a breach}
+
+Escalation is graduated and aims at \emph{remediation and structure}, not at punishing a person.
+The goal is to bring the artefact back into line with the rules, not to find someone to blame.
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.05\linewidth} L{0.22\linewidth} L{0.36\linewidth} L{0.25\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{Lvl}} & {\color{white}\textbf{Situation}} & {\color{white}\textbf{Response}} & {\color{white}\textbf{Who}} \\
+\midrule
+1 & \br{green}{Unintentional breach} & Warning in the MR + a request for remediation (explanation, ADR, rewrite). The MR is not merged until it complies. & Reviewer \\
+2 & \br{amber}{Repeated / not remedied} & Block on the MR and the branch; the change is not merged. The reason is recorded. & Reviewer + senior \\
+3 & \br{red}{Deliberate bypassing of the gate} & Escalation to the authority; retrospective review of the affected changes. & {[}escalation authority --- fill in{]} \\
+4 & \br{red}{Leak of data / know-how} & Immediate stop; handled as a security incident (see B6, NIS2/GDPR). & {[}escalation authority{]} + Security \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{itemize}
+\item \textbf{The default is remediation, not punishment.}
+Levels 1--2 are an ordinary part of review; they are not a sanction but the standard pressure for quality.
+\item \textbf{A harder response only for intent and leaks.}
+Levels 3--4 concern deliberate circumvention and outbound data flow --- where know-how or regulatory compliance is at stake.
+\item \textbf{The escalation authority.}
+In this draft it is designated generically as \code{[escalation authority]}; the specific role or person is filled in when the document is approved.
+\end{itemize}
+
+% =====================================================================
+% SECTION: 03-part-b.tex
+% =====================================================================
+\begin{partbanner}[blue]
+\mbox{PART B} --- Best practices (recommendations)
+\end{partbanner}
+
+Recommendations are subject to judgement.
+Deviation is fine as long as it is deliberate and defensible.
+
+\subsection{B1. For long-lived / established projects}
+
+\begin{itemize}
+\item \textbf{AI as a sparring partner.}
+The greatest benefit of AI in an established project is in analysis: explaining unfamiliar code, finding the impact of a change, generating hypotheses while debugging --- not in writing production code.
+\item \textbf{Characterisation tests before you touch anything.}
+Before modifying an uncovered area, have AI propose tests describing the current behaviour.
+This lowers the risk of a silent regression.
+\item \textbf{Incremental batches.}
+Small, separate changes, each with its own MR.
+A large AI-generated diff is hard to review in an established project and erases the mental model.
+\item \textbf{Domain intuition out loud.}
+When mentoring, have the junior explain why an AI proposal is (in)appropriate in the given context --- transferring intuition is worth more than the diff itself.
+\end{itemize}
+
+\subsection{B2. For new projects}
+
+\begin{itemize}
+\item \textbf{Architecture by humans, filling with AI.}
+Design the skeleton and the interfaces yourself (by all means in dialogue with people), and only then speed up the implementation inside the modules with AI.
+\item \textbf{Expect drift (\textasciitilde20\,\%).}
+The implementation will diverge from the original design.
+Capture the divergence in an ADR or a journal so that it stays deliberate and documented.
+\item \textbf{A walking skeleton before breadth.}
+First a thin working vertical slice through all the layers, and only then expansion with AI.
+It verifies the blast-radius boundaries in practice.
+\item \textbf{Pace deliberately.}
+Generation speed is not the goal.
+In a new project it is cheap to slow down and draw the boundaries correctly --- fixing them later is expensive.
+\end{itemize}
+
+\subsection{B3. Shared practices}
+
+\begin{itemize}
+\item \textbf{A lightweight ADR process.}
+Markdown in the repository, not a ten-page Word document.
+It records the why, the alternatives and the trade-offs --- see the appendix.
+\item \textbf{A developer journal.}
+Short notes on the direction and the reasons.
+It complements ADRs with running context.
+\item \textbf{Name the role.}
+Deliberately distinguish whether you are the architect, the crisis manager, the consultant or the developer --- and adapt how you use AI accordingly.
+\item \textbf{No friction = beware.}
+When the loop with AI has no friction and merely confirms everything, confirmation bias is built into the process.
+Deliberately insert a critical step.
+\end{itemize}
+
+\subsection{B4. Modes of working with AI on data under NDA}
+
+This is an area that still needs to be resolved --- the modes below are a decision scale, not a finished policy.
+Rule A1.8 requires that for data covered by an NDA \textbf{project leadership chooses one of the modes} before an AI tool is used.
+The modes are ordered from the strictest to the most permissive; the choice is a trade-off between strictness and usability.
+
+\begin{calloutplain}[grey]
+\textbf{The core of the problem:} an \enquote{AI in the editor} type of tool sends content to the provider's server for processing.
+The \enquote{do not store data} option is a declaration, not a verifiable technical guarantee --- and with data under NDA, responsibility for the transfer always lies with the sender.
+\end{calloutplain}
+
+\medskip
+\noindent
+\begin{tabularx}{\linewidth}{L{0.05\linewidth} L{0.26\linewidth} L{0.34\linewidth} L{0.23\linewidth}}
+\toprule
+\rowcolor{navy}
+{\color{white}\textbf{\#}} & {\color{white}\textbf{Mode}} & {\color{white}\textbf{Substance}} & {\color{white}\textbf{Trade-off}} \\
+\midrule
+0 & \br{red}{Sending prohibited} & AI is not used on data under NDA at all; only on unprotected parts. & Highest certainty, lowest benefit from AI. \\
+1 & \br{amber}{Local / self-hosted model} & The model runs on your own infrastructure, data never leaves the perimeter. & Operating and hardware costs; a weaker model than the cloud. \\
+2 & \br{amber}{Anonymisation / abstraction of the input} & Only the generalised problem goes to the AI, without protected identifiers and context. & Laborious, with a risk of residual identifiability. \\
+3 & \br{green}{Isolated sandbox + manual transfer} & AI development happens on the side on a neutral task; the result is carried over and rewritten by hand into the protected codebase. & Double the work, but protected code is never sent. \\
+\bottomrule
+\end{tabularx}
+
+\medskip
+\begin{itemize}
+\item \textbf{Project leadership decides, not the individual developer.}
+Choosing the mode is a decision with legal consequences; it belongs at the level that is accountable for the NDA.
+\item \textbf{The default is mode 0.}
+If no decision has been made, sending is prohibited.
+\item \textbf{Mode 3 as the practically available compromise.}
+An isolated sandbox with manual transfer back makes it possible to use AI while protected code never leaves the perimeter --- the price is double work and discipline during the rewrite.
+\item \textbf{Combining modes.}
+The modes are not mutually exclusive: you can, for example, anonymise (2) the input to a local model (1).
+\end{itemize}
+
+\subsection{B5. Layered architecture as a precondition for a wide AI zone}
+
+Rule A1.3 says that the degree of control is determined by the risk.
+The positive inversion (hinted at in the Premise) reads: \emph{blast radius can be reduced by design} --- and thereby the space in which AI may lead can legitimately be widened.
+This is not an excuse for looser rules, but a recipe for \emph{earning} looser rules through good design.
+
+\begin{calloutplain}[green]
+The goal: pull the risk-bearing core (security, data, integrations) into a small, isolated and well-guarded surface.
+What remains outside --- domain logic, UI, transformations --- then lies in the low-blast-radius zone, where AI can work almost without restriction and where a fault is local and easy to verify.
+\end{calloutplain}
+
+\medskip
+What creates such an architecture:
+
+\begin{itemize}
+\item \textbf{Stable contracts at the boundaries.}
+Risk-bearing layers hidden behind a clear interface that does not change with every change of logic.
+AI works against the contract, not inside the sensitive implementation.
+\item \textbf{Isolation of the security and data layers.}
+Authentication, encryption, persistence and secrets management in separate, small modules that everyday development does not touch.
+These modules are written by the developer (see matrix A4); the rest of the system is independent of them.
+\item \textbf{Clean separation of layers.}
+Domain logic knows nothing about persistence or transport.
+As a result, a large part of the code is testable and safe to generate without being able to break the assumptions the risk-bearing core rests on.
+\item \textbf{The blast-radius boundary as a deliberate decision.}
+During design it is explicitly determined where the line between \enquote{AI-led} and \enquote{developer-led} runs --- and this line is recorded in an ADR, not implicit.
+\end{itemize}
+
+\begin{callout}[amber]{The limits of this principle}
+It holds only where the isolation is \emph{real}, not merely declared.
+If the risk-bearing core seeps into the rest of the system (shared state, a contract that changes with every feature, security scattered across the code), then \enquote{low blast radius} does not exist and a wide AI zone is an illusion.
+A wide AI zone is therefore \emph{a reward for demonstrably good design}, not the starting state.
+\end{callout}
+
+\subsection{B6. Protecting know-how and the outbound data flow}
+
+The rules in Part A mainly guard \emph{what enters} the codebase.
+Just as important is \emph{what leaves it} --- an AI tool is a two-way channel, and a company's know-how leaks out through the same pipe that help flows in through.
+
+\begin{calloutplain}[grey]
+Sending code or context to an external AI tool is an \emph{outbound data flow}.
+It is covered by rule A1.7 (DPA), A1.8 (NDA) and the modes in B4 --- but even where neither personal data nor an NDA is involved, it is know-how whose value lies in the competition not having it.
+\end{calloutplain}
+
+\medskip
+\begin{itemize}
+\item \textbf{What is know-how, not just code.}
+Domain models, integration patterns, solutions to non-standard problems, architectural decisions --- that is the value the company has accumulated.
+Sending it to a tool that learns from the data or retains it is a silent drain of that value.
+\item \textbf{The principle of least necessary context.}
+Only as much context as the task requires goes to the AI --- not the whole module \enquote{just in case}.
+The less that leaves, the smaller the exposure.
+\item \textbf{The sensitive core is not sent.}
+Parts carrying competitive advantage (key algorithms, domain specifics) are handled in a mode that does not send them out (B4 --- local model, anonymisation, isolated sandbox).
+\item \textbf{Symmetry with the inbound side.}
+Just as input into the risk-bearing core must be fully owned by the developer (A1.2), the risk-bearing core must not be sent out uncontrolled.
+The boundary holds in both directions.
+\end{itemize}
+
+% =====================================================================
+% SECTION: 04-checklists.tex
+% =====================================================================
+\section{Onboarding checklists (step by step)}
+
+Practical steps for starting to work with AI on a project.
+Tick them off in order; each step must be done before the next.
+
+\subsection{Checklist 1 --- Introducing AI into an established project}
+
+\begin{itemize}[label={}]
+\item \cb Identify the blast-radius zones (security, data, integrations) and mark them as developer-led.
+\item \cb Verify that no credentials or keys are in the repository; if they are, handle it as an incident before anything else.
+\item \cb Check that a DPA/SCC exists for every external AI interface that personal data could flow to.
+\item \cb If the data falls under an NDA, verify that project leadership has chosen a mode of working with AI under B4.
+\item \cb Set things up so that AI output enters as a proposal or a textual instruction, not as a direct write of finished files.
+\item \cb Define which tasks are isolatable and may be AI-led (tests, documentation, local domain logic).
+\item \cb Make sure characterisation tests exist for the areas you are about to touch.
+\item \cb Agree with the reviewer that contract changes require an ADR and an explanation of the impact on the guaranteed assumptions.
+\item \cb Check the bus factor: is there a second person able to take over the affected part?
+\end{itemize}
+
+\subsection{Checklist 2 --- Starting a new project with AI}
+
+\begin{itemize}[label={}]
+\item \cb Write down the architectural skeleton and the module boundaries before AI generates anything.
+\item \cb Mark the risk-bearing zones on the skeleton (authentication, encryption, persistence, secrets) as developer-led.
+\item \cb If the data falls under an NDA, verify the chosen mode of working with AI under B4.
+\item \cb Create \code{docs/adr/} and write ADR-0001 for the most important decision (persistence/security).
+\item \cb Build the walking skeleton --- a thin vertical slice through all the layers --- by hand or with minimal AI assistance.
+\item \cb Set up secrets management (e.g. a Key Vault) by hand; AI does not touch it.
+\item \cb Prepare the CI/CD scaffolding; AI may do routine boilerplate only, checked by Ops.
+\item \cb Only now open the wider AI-led zone for the domain and UI layers.
+\item \cb Establish the habit of a journal/ADRs to capture divergence from the design.
+\end{itemize}
+
+\subsection{Checklist 3 --- Before every merge of an AI-assisted MR}
+
+\begin{itemize}[label={}]
+\item \cb I understand every block and can defend it without AI.
+\item \cb The MR or commit is marked as AI-generated, if it is.
+\item \cb The change does not reach into the developer-led zone without the corresponding reviewer.
+\item \cb If a contract changes, an ADR exists.
+\item \cb No secrets or keys in the diff.
+\item \cb For data under NDA, the chosen mode of working with AI was followed.
+\item \cb Only the necessary context went to the AI, not the sensitive core carrying know-how.
+\item \cb The MR does not bypass the gate (no splitting of a risk-bearing change, no false marking of origin).
+\item \cb The tests describe behaviour, not merely that the code runs.
+\end{itemize}
+
+% =====================================================================
+% SECTION: 05-projects.tex
+% =====================================================================
+\section{Categorising a project (how to classify it)}
+
+Instead of listing specific projects (that will be the subject of a separate example document), what follows is a decision guide for which category a project belongs to.
+
+\subsection{Established project}
+
+\begin{itemize}
+\item \textbf{Signs:} it is in production, has history, existing integrations and a fixed blast radius.
+\item \textbf{Mode:} fully governed by Parts A2 and B1. AI consults, the developer writes.
+\item \textbf{Beware:} blanket AI refactoring of integration properties without an ADR is a typical source of costly remediation.
+\end{itemize}
+
+\subsection{Borderline project (new code in an established context)}
+
+\begin{itemize}
+\item \textbf{Signs:} newly written code that is nevertheless tightly coupled to an established system (shared contracts, data, integrations).
+\item \textbf{Mode:} until it is isolated behind a stable contract, it follows the rules for an ESTABLISHED project.
+\item \textbf{Opportunity:} being new code, it has a chance to draw the boundaries and version the contracts correctly from the start.
+\item \textbf{ADR:} decisions about the shape and versioning of the contracts belong in an ADR from the first commit.
+\end{itemize}
+
+\subsection{New project (greenfield)}
+
+\begin{itemize}
+\item \textbf{Signs:} no existing codebase or integrations; the boundaries are still being drawn.
+\item \textbf{Mode:} the full regime of Parts A3 and B2.
+\item \textbf{Sequence:} skeleton $\rightarrow$ ADR $\rightarrow$ walking skeleton $\rightarrow$ isolation of risks $\rightarrow$ a wider AI-led zone.
+\end{itemize}
+
+% =====================================================================
+% SECTION: 06-appendix.tex
+% =====================================================================
+\section{Appendix: ADR template}
+
+An ADR (Architecture Decision Record) = a short record of an architectural decision.
+A Markdown file in the repository, typically \code{docs/adr/0001-title.md}.
+It records the why, not the what.
+
+\begin{tcolorbox}[colback=black!3,colframe=black!20,boxrule=0.4pt,arc=1pt,
+  left=8pt,right=8pt,top=6pt,bottom=6pt,fontupper=\ttfamily\small]
+\begin{Verbatim}[breaklines=true]
+# ADR-0001: <decision title>
+
+## Status
+Accepted — YYYY-MM-DD
+
+## Context
+What leads us to the decision; relevant constraints (e.g. GDPR Art. 32).
+
+## Decision
+What we chose and how, specifically.
+
+## Alternatives
+- Option A — why not
+- Option B — why not
+
+## Consequences
+- Dependencies this creates
+- Trade-offs we accept
+\end{Verbatim}
+\end{tcolorbox}
+
+\section{Quick rules to close}
+
+\begin{itemize}
+\item \textbf{You do not know exactly what the code does} $\rightarrow$ do not use it.
+\item \textbf{It affects security/data} $\rightarrow$ you may use it only if you take full ownership (A1.2): threat model, tests, a defence without AI. Secrets not even then (A1.4).
+\item \textbf{You cannot explain it without AI} $\rightarrow$ do not merge it.
+\item \textbf{Established codebase} $\rightarrow$ AI proposes, the developer writes.
+\item \textbf{New project} $\rightarrow$ skeleton and ADRs first, only then a wider AI-led zone.
+\item \textbf{Data under NDA} $\rightarrow$ without a leadership decision on the mode (B4), AI is not used.
+\item \textbf{A well-isolated risk-bearing core} $\rightarrow$ AI may lead the rest almost without restriction (B5).
+\item \textbf{Everything through a mandatory MR} $\rightarrow$ \enquote{it works} is not a reason to merge (A5).
+\item \textbf{Bypassing the gate} $\rightarrow$ a breach in itself, and it escalates (A5/A6).
+\item \textbf{Know-how is an outbound flow} $\rightarrow$ the sensitive core is not sent out (B6).
+\end{itemize}
+
+\end{document}

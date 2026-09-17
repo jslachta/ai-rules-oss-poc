@@ -35,8 +35,20 @@ a `\docclass` v `preamble.tex`; každý dokument je může přepsat přes `\rene
 (viz `motivace.tex`). Při převzetí šablony jako interní směrnice změň `\docclass`
 na `Interní` — jde o jediné místo pro oba dokumenty.
 
+## Jazykové varianty
+
+Česká varianta je v kořeni, anglická v `en/` (`ai-rules.tex`, `motivation.tex`
+jako protějšek `motivace.tex`, a vlastní `preamble.tex`). Struktura sekcí i
+pořadí odstavců jsou shodné, takže jdou porovnávat řádek po řádku.
+Anglická preambule se liší
+jen v jazyce (`\setdefaultlanguage{english}`), uvozovkách, metadatech a
+řetězci v patičce; vše ostatní je shodné. Buduje se z adresáře `en/`, protože
+`\input{preamble.tex}` se hledá vůči aktuálnímu adresáři.
+
 ## Konvence
 
 - **One-sentence-per-line**: změna věty = jeden řádek v diffu.
+- **Obě jazykové varianty se drží v synchronu**: věcná změna pravidla patří
+  do české i anglické verze v témže MR (vydávají se pod stejnou verzí).
 - PDF se needituje ručně ani neverzuje (viz `.gitignore`); buduje se z `.tex`.
 - Konkrétní projekty se zde neuvádějí — budou předmětem samostatného vzorového dokumentu.

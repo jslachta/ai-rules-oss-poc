@@ -1,3 +1,5 @@
+[Čeština](../README.md) · **English**
+
 # Rules for AI-Assisted Development
 
 A framework for managing the risks of developing software with AI assistance —
@@ -10,9 +12,9 @@ The companion text **[Why these rules](https://github.com/jslachta/ai-rules-oss-
 explains the motivation behind the framework — what it grew out of and why it
 matters.
 
-This is the English translation of the Czech original in the repository root.
-Both variants are released under the same tag and carry the same version; the
-English assets have the `-en` postfix.
+This is the English translation of the [Czech original](../README.md) in the
+repository root. Both variants are released under the same tag and carry the
+same version; the English assets have the `-en` postfix.
 
 ## What it is about
 

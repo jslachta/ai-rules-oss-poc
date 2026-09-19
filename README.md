@@ -1,3 +1,5 @@
+**Čeština** · [English](en/README.md)
+
 # Pravidla pro AI-asistovaný vývoj
 
 Rámec pro řízení rizik při vývoji softwaru s asistencí AI - a stejně tak
@@ -9,9 +11,11 @@ firemní směrnice.
 Doprovodný text **[Proč tato pravidla](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-motivace.pdf)**
 vysvětluje motivaci za rámcem - z čeho vyrostl a proč na něm záleží.
 
-English version: **[rules](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-en.pdf)**
-· **[motivation](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-motivation-en.pdf)**
-· [zdroj v `en/`](en/) - vydává se ve stejném tagu a stejné verzi jako česká varianta.
+> **In English?** The framework is available in English as well:
+> **[English README](en/README.md)** · [rules (PDF)](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-en.pdf)
+> · [motivation (PDF)](https://github.com/jslachta/ai-rules-oss-poc/raw/releases/ai-dev-rules-motivation-en.pdf)
+> · [source in `en/`](en/). Both language variants ship under the same tag
+> and the same version number.
 
 ## O co jde
 

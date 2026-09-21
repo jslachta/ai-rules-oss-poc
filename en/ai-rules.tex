@@ -46,6 +46,16 @@ Take what fits; adapt or drop the rest.
 It is distributed under the CC-BY 4.0 licence (free use including commercial, with attribution).
 \end{callout}
 
+\begin{callout}[amber]{What the rules enforce and what they do not}
+The rules in this document do not enforce judgement; they only mark the places where judgement is required and who is responsible for it.
+The mechanics (the MR gate, \code{CODEOWNERS}, CI checks --- see A5) are enforceable, but not sufficient on their own.
+The core is rules A1.1 and A1.2, that is, understanding the code and taking ownership of it --- and these cannot be enforced, only required in review.
+This is intentional, not a shortcoming: the rules are written with the intent that responsibility stays with people and does not shift to the tool or to the process.
+For adopting the framework it follows that an organisation which adopts the mechanics without taking on the responsibility has gained nothing --- it gets green checks with no change in how decisions are made.
+The framework is meant to count as deployed only when there is a specific, named person willing to reject an MR by citing A1.1, and that person has cover to do so.
+If there is no such person, the framework is not deployed yet, whatever the repository contains.
+\end{callout}
+
 \medskip
 \textbf{The document has two clearly separated parts.}
 Do not confuse them --- they differ in how binding they are.

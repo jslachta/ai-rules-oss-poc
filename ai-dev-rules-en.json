@@ -1,9 +1,9 @@
 {
   "document": "ai-dev-rules-en",
   "language": "en",
-  "version": "0.1.1",
-  "commit": "7bf45c7",
-  "tag": "v0.1.1",
-  "build_date": "2026-09-17",
-  "pipeline": "https://github.com/jslachta/ai-rules-oss-poc/actions/runs/35267797154"
+  "version": "0.1.2",
+  "commit": "aad660f",
+  "tag": "v0.1.2",
+  "build_date": "2026-09-21",
+  "pipeline": "https://github.com/jslachta/ai-rules-oss-poc/actions/runs/35639602490"
 }
